@@ -83,8 +83,8 @@ public class TransactionListener {
                     }
 
                     // TODO
-                    TxEvent te = TxEvent.builder().cid(cid).from(msg.getFrom()).to(msg.getTo()).value(receipt.getGasUsed())
-                        .fee(msg.getGasFeeCap())
+                    TxEvent te = TxEvent.builder().cid(cid).from(msg.getFrom()).to(msg.getTo()).value(msg.getValue())
+                        .fee(receipt.getGasUsed())
                         .message(msg)
                         .build();
                     applicationEventPublisher.publishEvent(te);
