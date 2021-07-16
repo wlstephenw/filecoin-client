@@ -58,6 +58,10 @@ public class Controller implements Api {
     @Override
     public MessageResult transfer(EasyTransfer transfer) {
         TransactionManager txm = new TransactionManager(this.wallet);
+        Order orderById = repository.findOrderById(transfer.getId());
+        if (orderById != null){
+            return MessageResult.builder().object(orderById.getTxId()).msg("duplicated order").build();
+        }
         Cid cid = txm.easyTransfer(transfer);
         repository.save(Order.builder().id(transfer.getId()).type("transfer").txId(cid.getStr()).build());
         MessageResult res = new MessageResult();
