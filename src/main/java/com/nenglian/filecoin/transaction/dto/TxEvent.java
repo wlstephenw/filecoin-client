@@ -1,8 +1,7 @@
 package com.nenglian.filecoin.transaction.dto;
 
-import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
-import java.math.BigInteger;
+import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
 import lombok.Builder;
 import lombok.Data;
 import lombok.ToString;
@@ -16,10 +15,6 @@ import lombok.ToString;
 @Builder
 @ToString
 public class TxEvent {
-    Cid cid;
-    String from;
-    String to;
-    BigInteger value;
-    BigInteger fee;
     Message message;
+    MessageReceipt receipt;
 }

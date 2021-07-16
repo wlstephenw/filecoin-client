@@ -1,6 +1,6 @@
 package com.nenglian.filecoin.transaction;
 
-import com.nenglian.filecoin.db.TxRepository;
+import com.nenglian.filecoin.service.db.TxRepository;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;

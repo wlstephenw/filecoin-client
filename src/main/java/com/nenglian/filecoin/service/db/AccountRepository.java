@@ -1,4 +1,4 @@
-package com.nenglian.filecoin.db;
+package com.nenglian.filecoin.service.db;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 

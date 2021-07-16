@@ -1,4 +1,4 @@
-package com.nenglian.filecoin.db;
+package com.nenglian.filecoin.service.db;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

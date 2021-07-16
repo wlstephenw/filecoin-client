@@ -3,7 +3,7 @@ package com.nenglian.filecoin.transaction;
 
 import com.nenglian.filecoin.wallet.Wallet;
 import com.nenglian.filecoin.wallet.Wallet.WalletAddress;
-import com.nenglian.filecoin.transaction.dto.EasyTransfer;
+import com.nenglian.filecoin.service.api.EasyTransfer;
 import java.io.IOException;
 import java.math.BigInteger;
 import org.junit.Assert;

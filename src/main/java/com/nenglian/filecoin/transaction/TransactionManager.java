@@ -11,7 +11,7 @@ import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
 import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.Wallet;
-import com.nenglian.filecoin.transaction.dto.EasyTransfer;
+import com.nenglian.filecoin.service.api.EasyTransfer;
 import java.io.IOException;
 import java.math.BigInteger;
 import org.springframework.stereotype.Component;

@@ -1,4 +1,4 @@
-package com.nenglian.filecoin.transaction.dto;
+package com.nenglian.filecoin.service.api;
 
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -13,6 +13,8 @@ import lombok.Data;
 @Data
 @Builder
 public class EasyTransfer implements Serializable {
+
+    String id;
 
     /**
      * 转账方地址

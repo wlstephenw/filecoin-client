@@ -2,8 +2,8 @@ package com.nenglian.filecoin.wallet;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
-import com.nenglian.filecoin.db.Account;
-import com.nenglian.filecoin.db.AccountRepository;
+import com.nenglian.filecoin.service.db.Account;
+import com.nenglian.filecoin.service.db.AccountRepository;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
 import com.nenglian.filecoin.rpc.api.LotusChainAPI;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
@@ -11,7 +11,6 @@ import com.nenglian.filecoin.wallet.signer.KeySigner;
 import com.nenglian.filecoin.wallet.signer.NodeSigner;
 import com.nenglian.filecoin.wallet.signer.Signer;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
@@ -138,14 +137,14 @@ public class Wallet {
     public void handleTxEvent(TxEvent txEvent) {
         System.out.println("wallet receive txEvent, update balance");
         System.out.println(txEvent);
-        Account from = repository.findAccountByAddress(txEvent.getFrom());
+        Account from = repository.findAccountByAddress(txEvent.getMessage().getFrom());
         if (from != null){
-            from.setBalance(from.getBalance().subtract(txEvent.getValue()));
+            from.setBalance(from.getBalance().subtract(txEvent.getMessage().getValue()));
             repository.save(from);
         }
-        Account to = repository.findAccountByAddress(txEvent.getTo());
+        Account to = repository.findAccountByAddress(txEvent.getMessage().getTo());
         if (to != null){
-            to.setBalance(to.getBalance().add(txEvent.getValue()));
+            to.setBalance(to.getBalance().add(txEvent.getMessage().getValue()));
             repository.save(to);
         }
     }

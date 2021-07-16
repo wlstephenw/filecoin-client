@@ -6,6 +6,7 @@ import com.nenglian.filecoin.rpc.api.LotusStateAPI;
 import com.nenglian.filecoin.rpc.domain.BlockMessages;
 import com.nenglian.filecoin.rpc.domain.MsgLookup;
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
+import com.nenglian.filecoin.rpc.domain.types.BlockHeader;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
@@ -15,17 +16,24 @@ import com.nenglian.filecoin.rpc.jasonrpc.Callback;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
 import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import javafx.util.Pair;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -36,6 +44,7 @@ import org.springframework.stereotype.Component;
  * @author stephen
  * @since 2021/7/15 上午11:37
  */
+@Data
 @Component
 @EnableScheduling
 public class TransactionListener {
@@ -50,44 +59,30 @@ public class TransactionListener {
         .build();
     LotusChainAPI lotusChainAPI = lotusAPIFactory.createLotusChainAPI();
 
-    static int latestBlock = 11665;
+
+    AtomicInteger latestBlock = new AtomicInteger(18130);
 
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
+
     @Scheduled(cron = "0/5 * * * * ?")
     public void listen() throws IOException {
-        Long current = lotusChainAPI.head().execute().getResult().getHeight();
-        for (int i = latestBlock; i <= current; i++){
+
+        Long head = lotusChainAPI.head().execute().getResult().getHeight();
+        while (latestBlock.get() <= head){
+            int i = latestBlock.getAndIncrement();
             System.out.println("scan block: " + i);
             process(i);
-            latestBlock = i;
         }
-
     }
 
     public void process(long height){
-        CompletableFuture<Map<Cid, Message>> future = getMessagesFutureByHeight(height);
+        CompletableFuture<Map<Cid, TxEvent>> future = getMessagesFutureByHeight(height);
         future.whenComplete((map, error) -> {
             if (map.size() > 0) {
-                map.forEach((cid, msg) -> {
-
-                    LotusStateAPI stateAPI = lotusAPIFactory.createLotusStateAPI();
-                    MessageReceipt receipt;
-                    try {
-                        MsgLookup msgLookup = stateAPI
-                            .searchMsg(cid).execute().getResult();
-                        receipt = msgLookup.getReceipt();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    // TODO
-                    TxEvent te = TxEvent.builder().cid(cid).from(msg.getFrom()).to(msg.getTo()).value(msg.getValue())
-                        .fee(receipt.getGasUsed())
-                        .message(msg)
-                        .build();
-                    applicationEventPublisher.publishEvent(te);
+                map.forEach((cid, ev) -> {
+                    applicationEventPublisher.publishEvent(ev);
                 });
 
             }
@@ -95,8 +90,70 @@ public class TransactionListener {
         });
     }
 
+    private MessageReceipt getReceipt(Cid cid) {
+        LotusStateAPI stateAPI = lotusAPIFactory.createLotusStateAPI();
+        MessageReceipt receipt;
+        try {
+            MsgLookup msgLookup = stateAPI
+                .searchMsg(cid).execute().getResult();
+            receipt = msgLookup.getReceipt();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return receipt;
+    }
 
-    private CompletableFuture<Map<Cid, Message>> getMessagesFutureByHeight(long height) {
+    public Long head() throws IOException {
+        return lotusChainAPI.head().execute().getResult().getHeight();
+    }
+
+    public CompletableFuture<Map<Cid, TxEvent>> getMessagesFutureByHeightRange(Date from, Date to) throws IOException {
+        Long current = lotusChainAPI.head().execute().getResult().getHeight();
+        BlockHeader block = getBlockHeader(current);
+        long fromHeight = block.getHeight();
+        long toHeight = block.getHeight();
+        while (block.getTimestamp() > from.getTime() && current > 0){
+
+            fromHeight = block.getHeight();
+            if (block.getTimestamp() > to.getTime()) {
+                toHeight = block.getHeight();
+            }
+            current--;
+            block = getBlockHeader(current);
+        }
+
+        return getMessagesFutureByHeightRange(fromHeight, toHeight);
+    }
+
+    public BlockHeader getBlockHeader(long height) throws IOException {
+        List<BlockHeader> blocks = lotusChainAPI.getTipSetByHeight(height, null).execute().getResult().getBlocks();
+        BlockHeader header = blocks.get(0);
+        return header;
+    }
+
+
+    public CompletableFuture<Map<Cid, TxEvent>> getMessagesFutureByHeightRange(long from, long to){
+        if (to < from){
+            throw new RuntimeException("to must larger than from");
+        }
+        CompletableFuture<?>[] futures = LongStream.range(from, to + 1)
+            .mapToObj(this::getMessagesFutureByHeight)
+            .toArray(CompletableFuture<?>[]::new);
+
+        CompletableFuture<Void> all = CompletableFuture.allOf(futures);
+
+        CompletableFuture<Map<Cid, TxEvent>> listCompletableFuture = all.thenApply(v -> {
+
+            return Stream.of(futures)
+                .map(f -> f.join())
+                .map(e -> (Map<Cid, TxEvent>) e)
+                .flatMap(map -> map.entrySet().stream())
+                .collect(Collectors.toMap(Entry::getKey, Entry::getValue));      // the type of map to be created
+        });
+        return listCompletableFuture;
+    }
+
+    private CompletableFuture<Map<Cid, TxEvent>> getMessagesFutureByHeight(long height) {
         // 根据固定高度拉去TipSet
         CompletableFuture<TipSet> tipSetFuture = call(() -> lotusChainAPI.getTipSetByHeight(height, null));
         // 获取所有状态OK的消息
@@ -119,12 +176,23 @@ public class TransactionListener {
                         .stream()
                         .map(SignedMessage::getMessage)
                         .collect(Collectors.toList());
-                    Stream.Builder<Pair<Cid, Message>> builder = Stream.builder();
+                    Stream.Builder<Pair<Cid, TxEvent>> builder = Stream.builder();
                     for (int i = 0; i < blsMessages.size(); ++i) {
-                        builder.add(new Pair<>(cids.get(i), blsMessages.get(i)));
+                        builder.add(
+                            new Pair<>(cids.get(i),
+                            TxEvent.builder()
+                                .message(blsMessages.get(i))
+                                .receipt(getReceipt(blsMessages.get(i).getCid()))
+                                .build()));
                     }
                     for (int i = 0; i < signedMessages.size(); ++i) {
-                        builder.add(new Pair<>(cids.get(i + blsMessages.size()), signedMessages.get(i)));
+                        builder.add(
+                            new Pair<>(
+                            cids.get(i + blsMessages.size()),
+                            TxEvent.builder()
+                                .message(signedMessages.get(i))
+                                .receipt(getReceipt(signedMessages.get(i).getCid()))
+                                .build()));
                     }
                     return builder.build();
                 })
