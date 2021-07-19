@@ -15,7 +15,7 @@ public class MQSender {
     @EventListener
     public void handleTxEvent(TxEvent txEvent) {
         System.out.println("MQSender tx event, send to mq");
-        System.out.println(txEvent);
+        // TODO
     }
 
 }

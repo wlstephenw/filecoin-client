@@ -6,6 +6,7 @@ import com.nenglian.filecoin.rpc.api.LotusStateAPI;
 import com.nenglian.filecoin.rpc.domain.BlockMessages;
 import com.nenglian.filecoin.rpc.domain.MsgLookup;
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
+import com.nenglian.filecoin.rpc.domain.exitcode.ExitCode;
 import com.nenglian.filecoin.rpc.domain.types.BlockHeader;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
@@ -14,6 +15,7 @@ import com.nenglian.filecoin.rpc.domain.types.TipSet;
 import com.nenglian.filecoin.rpc.jasonrpc.Call;
 import com.nenglian.filecoin.rpc.jasonrpc.Callback;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
+import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
 import java.io.IOException;
 import java.util.Date;
@@ -72,6 +74,8 @@ public class TransactionListener {
         future.whenComplete((map, error) -> {
             if (map.size() > 0) {
                 map.forEach((cid, ev) -> {
+                    System.out.println("交易内容:" + ev.getMessage());
+                    System.out.println("交易结果:" + ev.getReceipt());
                     applicationEventPublisher.publishEvent(ev);
                 });
 

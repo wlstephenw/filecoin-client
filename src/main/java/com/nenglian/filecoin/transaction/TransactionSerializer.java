@@ -23,8 +23,8 @@ public class TransactionSerializer {
      */
     public byte[] transactionSerialize(Message transaction) throws  IOException {
         int versions = 0;
-        ByteString fromByte = new ByteString(new Address(transaction.getFrom()).getBytes());
-        ByteString toByte = new ByteString(new Address(transaction.getTo()).getBytes());
+        ByteString fromByte = new ByteString(Address.from(transaction.getFrom()).getBytes());
+        ByteString toByte = new ByteString(Address.from(transaction.getTo()).getBytes());
         UnsignedInteger versionByte = new UnsignedInteger(versions);
         UnsignedInteger nonceByte = new UnsignedInteger(transaction.getNonce());
         byte[] valueBytes = transaction.getValue().toByteArray();

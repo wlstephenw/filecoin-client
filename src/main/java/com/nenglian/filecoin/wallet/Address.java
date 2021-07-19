@@ -22,20 +22,10 @@ public class Address implements Serializable {
     private String network;
     private byte[] bytes;
 
-
-    // get encoded bytes, network id + raw bytes
-    public byte[] getBytes(){
-        byte[] dest = new byte[this.bytes.length + 1];
-        // secp256k1 id
-        dest[0] = 1;
-        System.arraycopy(this.bytes, 0, dest, 1, this.bytes.length);
-        return dest;
-    }
-
-    public byte[] getRawBytes(){
-        return this.bytes;
-    }
-
+    /**
+     * secp256k1地址字节长度
+     */
+    private final static int addressLength = 20;
 
     public Address(byte[] pub) {
         if(pub.length < 65){
@@ -45,42 +35,9 @@ public class Address implements Serializable {
         Blake2b.Digest digest = Blake2b.Digest.newInstance(20);
         this.type = 1;
         this.bytes = digest.digest(pub);
-
     }
 
-    public String toEncodedAddress(){
-        Blake2b.Digest blake2b3 = Blake2b.Digest.newInstance(4);
-        byte[] checksum = blake2b3.digest(this.getBytes());
-        byte[] dest = new byte[this.getRawBytes().length + checksum.length];
-        System.arraycopy(this.getRawBytes(), 0, dest, 0, this.getRawBytes().length);
-        System.arraycopy(checksum, 0, dest, this.getRawBytes().length, checksum.length);
-
-        return "f1" + Base32.encode(dest).toLowerCase();
-    }
-
-
-    public static String toEncodedAddress(byte[] pub) {
-        if(pub.length < 65){
-            throw new RuntimeException("Only support 65 bytes public key");
-        }
-        // TODO use bytes to do all these staff
-        Blake2b.Digest digest = Blake2b.Digest.newInstance(20);
-        String hash = HexUtil.encodeHexStr(digest.digest(pub));
-        //4.计算校验和
-        String pubKeyHash = "01" + HexUtil.encodeHexStr(digest.digest(pub));
-        Blake2b.Digest blake2b3 = Blake2b.Digest.newInstance(4);
-        String checksum = HexUtil.encodeHexStr(blake2b3.digest(HexUtil.decodeHex(pubKeyHash)));
-        //5.生成地址
-        return "f1" + Base32.encode(HexUtil.decodeHex(hash + checksum)).toLowerCase();
-    }
-
-
-    /**
-     * secp256k1地址字节长度
-     */
-    private final static int addressLength = 20;
-
-    public  Address(String addressStr) {
+    public static Address from(String addressStr) {
         if (StrUtil.isBlank(addressStr)) {
             throw new NullPointerException("addressStr 参数不能为空");
         }
@@ -108,11 +65,30 @@ public class Address implements Serializable {
         byte[] bytes = Arrays.copyOf(Base32.decode(substring), addressLength);
         // TODO check checksum
 
-        this.type = (byte) type;
-        this.bytes = bytes;
-        this.network = network;
+        return Address.builder().type((byte) type).bytes(bytes).network(network).build();
     }
 
+    // get encoded bytes, network id + raw bytes
+    public byte[] getBytes(){
+        byte[] dest = new byte[this.bytes.length + 1];
+        // secp256k1 id
+        dest[0] = 1;
+        System.arraycopy(this.bytes, 0, dest, 1, this.bytes.length);
+        return dest;
+    }
 
+    public byte[] getRawBytes(){
+        return this.bytes;
+    }
+
+    public String toEncodedAddress(){
+        Blake2b.Digest blake2b3 = Blake2b.Digest.newInstance(4);
+        byte[] checksum = blake2b3.digest(this.getBytes());
+        byte[] dest = new byte[this.getRawBytes().length + checksum.length];
+        System.arraycopy(this.getRawBytes(), 0, dest, 0, this.getRawBytes().length);
+        System.arraycopy(checksum, 0, dest, this.getRawBytes().length, checksum.length);
+
+        return "f1" + Base32.encode(dest).toLowerCase();
+    }
 
 }
