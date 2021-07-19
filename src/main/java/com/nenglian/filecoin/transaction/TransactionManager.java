@@ -10,7 +10,6 @@ import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
 import com.nenglian.filecoin.service.api.EasyTransfer;
-import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.Wallet;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -67,22 +66,44 @@ public class TransactionManager {
             .value(tx.getValue()).build());
     }
 
-    public Cid easyTransfer(EasyTransfer tx){
+    public Cid signAndSend(EasyTransfer tx){
         //获取gas
         Message gas = estimateGas(tx);
-        return this.easyTransfer(tx, gas);
+        return this.signAndSend(tx, gas);
     }
 
-    public Cid easyTransfer(EasyTransfer tx, Message gas){
+    public SignedMessage sign(EasyTransfer tx){
+        //获取gas
+        Message gas = estimateGas(tx);
+        return this.sign(tx, gas);
+    }
+
+    public Cid signAndSend(EasyTransfer tx, Message gas){
         if (tx == null || StrUtil.isBlank(tx.getFrom())
             || StrUtil.isBlank(tx.getTo())
             || tx.getValue() == null) {
             throw new RuntimeException("parameter cannot be empty");
         }
+        Message transaction = buildMessage(tx, gas);
+        SignedMessage signedMessage = this.sign(transaction);
+        return send(signedMessage);
+    }
+
+    public SignedMessage sign(EasyTransfer tx, Message gas){
+        if (tx == null || StrUtil.isBlank(tx.getFrom())
+            || StrUtil.isBlank(tx.getTo())
+            || tx.getValue() == null) {
+            throw new RuntimeException("parameter cannot be empty");
+        }
+        Message transaction = buildMessage(tx, gas);
+        return this.sign(transaction);
+    }
+
+    private Message buildMessage(EasyTransfer tx, Message gas) {
         //获取nonce
         long nonce = getNonce(tx.getFrom());
         //拼装交易参数
-        Message transaction = Message.builder().from(tx.getFrom())
+        return Message.builder().from(tx.getFrom())
             .to(tx.getTo())
             .gasFeeCap(gas.getGasFeeCap())
             .gasLimit(gas.getGasLimit() * 2)
@@ -91,11 +112,9 @@ public class TransactionManager {
             .nonce( nonce)
             .params("")
             .value(new BigInteger(tx.getValue().toString())).build();
-
-         return send(transaction);
     }
 
-    public Cid send(Message transaction){
+    public SignedMessage sign(Message transaction){
         if (transaction == null || StrUtil.isBlank(transaction.getFrom())
             || StrUtil.isBlank(transaction.getTo())
             || transaction.getGasLimit() == null
@@ -110,7 +129,11 @@ public class TransactionManager {
             throw new RuntimeException("the transfer amount must be greater than 0");
         }
 
-        SignedMessage signedMessage = wallet.getSigner(transaction.getFrom()).sign(transaction);
+        return wallet.getSigner(transaction.getFrom()).sign(transaction);
+
+    }
+
+    public Cid send(SignedMessage signedMessage){
 
         // TODO send to network
         try {

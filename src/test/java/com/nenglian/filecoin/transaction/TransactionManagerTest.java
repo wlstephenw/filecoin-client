@@ -41,7 +41,7 @@ class TransactionManagerTest {
             .value(BigInteger.ONE)
             .build();
 
-        txManager.easyTransfer(easyTransfer);
+        txManager.signAndSend(easyTransfer);
 
         int balance = txManager.lotusAPIFactory.createLotusWalletAPI().balance(to).execute().getResult().intValue();
         Assert.assertTrue(balance > 0);
@@ -62,7 +62,7 @@ class TransactionManagerTest {
             .value(new BigInteger("10000000000000"))
             .build();
 
-        txManager.easyTransfer(easyTransfer);
+        txManager.signAndSend(easyTransfer);
 
 
 

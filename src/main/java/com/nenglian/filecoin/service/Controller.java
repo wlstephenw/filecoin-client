@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.exitcode.ExitCode;
 import com.nenglian.filecoin.rpc.domain.types.Message;
+import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSet;
 import com.nenglian.filecoin.service.api.BlockInfo;
 import com.nenglian.filecoin.service.api.EasyTransfer;
@@ -23,7 +24,6 @@ import com.nenglian.filecoin.wallet.Wallet;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -69,7 +69,6 @@ public class Controller implements Api {
         }
 
         // 首先落库
-        // TODO 先计算CID
         Order order = Order.builder().id(transfer.getReqId()).type("transfer").status("pending").build();
         repository.save(order);
 
@@ -79,9 +78,21 @@ public class Controller implements Api {
         Cid cid;
         if (!StringUtils.isEmpty(transfer.getGas())) {
             gasMessage = JSON.parseObject(transfer.getGas(), Message.class);
-            cid = txm.easyTransfer(easyTransfer, gasMessage);
+            SignedMessage signedMessage = txm.sign(easyTransfer, gasMessage);
+
+            // TODO 先计算CID, 此处需要继续开发
+            if (signedMessage.getMessage().getCid() != null) {
+                order.setTxId(signedMessage.getMessage().getCid().getStr());
+                repository.save(order);
+            }
+            cid = txm.send(signedMessage);
         }else {
-            cid = txm.easyTransfer(easyTransfer);
+            SignedMessage signedMessage = txm.sign(easyTransfer);
+            if (signedMessage.getMessage().getCid() != null) {
+                order.setTxId(signedMessage.getMessage().getCid().getStr());
+                repository.save(order);
+            }
+            cid = txm.send(signedMessage);
         }
 
         order.setTxId(cid.getStr());
