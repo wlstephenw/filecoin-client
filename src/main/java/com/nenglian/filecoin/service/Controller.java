@@ -1,30 +1,37 @@
 package com.nenglian.filecoin.service;
 
 import cn.hutool.core.util.HexUtil;
+import com.alibaba.fastjson.JSON;
+import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
-import com.nenglian.filecoin.service.api.MessageResult;
+import com.nenglian.filecoin.rpc.domain.types.TipSet;
+import com.nenglian.filecoin.service.api.BlockInfo;
+import com.nenglian.filecoin.service.api.EasyTransfer;
+import com.nenglian.filecoin.service.api.Result;
 import com.nenglian.filecoin.service.api.Reconciliation;
+import com.nenglian.filecoin.service.api.Transfer;
+import com.nenglian.filecoin.service.api.WalletAddress;
 import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.service.db.OrderRepository;
-import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.transaction.TransactionListener;
 import com.nenglian.filecoin.transaction.TransactionManager;
-import com.nenglian.filecoin.service.api.EasyTransfer;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
 import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.Convert;
 import com.nenglian.filecoin.wallet.Wallet;
-import com.nenglian.filecoin.wallet.Wallet.WalletAddress;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,40 +50,63 @@ public class Controller implements Api {
 
 
     @Override
-    public MessageResult getNewAddress(String account, byte type) {
-
-        repository.save( Order.builder().type("getNewAddress").build());
-
+    public Result<WalletAddress> createAddress(String account, byte type) {
+        repository.save( Order.builder().type("createAddress").build());
         WalletAddress address = wallet.createAddress();
-
-        MessageResult res = new MessageResult();
+        Result<WalletAddress> res = new Result<>();
         res.setCode(0);
-        res.setObject(address);
+        res.setData(address);
         return res;
     }
 
     @Override
-    public MessageResult transfer(EasyTransfer transfer) {
+    public Result<String> transfer(Transfer transfer) {
         TransactionManager txm = new TransactionManager(this.wallet);
-        Order orderById = repository.findOrderById(transfer.getId());
+        Order orderById = repository.findOrderById(transfer.getReqId());
         if (orderById != null){
-            return MessageResult.builder().object(orderById.getTxId()).msg("duplicated order").build();
+            return Result.<String>builder().data(orderById.getTxId()).msg("duplicated order").build();
         }
-        Cid cid = txm.easyTransfer(transfer);
-        repository.save(Order.builder().id(transfer.getId()).type("transfer").txId(cid.getStr()).build());
-        MessageResult res = new MessageResult();
+
+        // 首先落库
+        // TODO 先计算CID
+        Order order = Order.builder().id(transfer.getReqId()).type("transfer").status("pending").build();
+        repository.save(order);
+
+        EasyTransfer easyTransfer = new EasyTransfer();
+        BeanUtils.copyProperties(transfer, easyTransfer);
+        Message gasMessage;
+        Cid cid;
+        if (!StringUtils.isEmpty(transfer.getGas())) {
+            gasMessage = JSON.parseObject(transfer.getGas(), Message.class);
+            cid = txm.easyTransfer(easyTransfer, gasMessage);
+        }else {
+            cid = txm.easyTransfer(easyTransfer);
+        }
+
+        order.setTxId(cid.getStr());
+        order.setStatus("submitted");
+        repository.save(order);
+
+        Result<String> res = new Result<>();
         res.setCode(0);
-        res.setObject(cid);
+        res.setData(cid.getStr());
         return res;
     }
 
+    @Override
+    public Result<String> gas(EasyTransfer transfer) {
+        TransactionManager txm = new TransactionManager(this.wallet);
+        Message message = txm.estimateGas(transfer);
+        String gas = JSON.toJSONString(message);
+
+        return Result.<String>builder().code(0).data(gas).build();
+    }
 
     @Override
-    public MessageResult reconciliation(Date from, Date to) {
+    public Result<List<Reconciliation>> reconciliation(Date from, Date to) {
         try {
             CompletableFuture<Map<Cid, TxEvent>> future = listener
                 .getMessagesFutureByHeightRange(from, to);
-
             Map<Cid, TxEvent> map = future.get();
             List<Reconciliation> collect = map.entrySet().stream()
                 .map((e) -> Reconciliation.builder()
@@ -87,59 +117,48 @@ public class Controller implements Api {
                     .fee(e.getValue().getReceipt().getGasUsed())
                     .build())
                 .collect(Collectors.toList());
-
-            return MessageResult.builder().code(0).object(collect).build();
+            return Result.<List<Reconciliation>>builder().code(0).data(collect).build();
         }catch (Exception e){
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public MessageResult toAddress(String hexpk) {
+    public Result<String> toAddress(String hexpk) {
         String address = new Address(HexUtil.decodeHex(hexpk)).toEncodedAddress();
-        return MessageResult.builder().code(0).object(address).build();
+        return Result.<String>builder().code(0).data(address).build();
     }
 
     @Override
-    public MessageResult setPollHeight(Integer height) {
+    public Result setPollHeight(Integer height) {
         listener.getLatestBlock().getAndSet(height);
-        return MessageResult.builder().code(0).build();
+        return Result.builder().code(0).build();
     }
 
     @Override
-    public MessageResult collect(String fromAddress, String toAddress, String gasAddress, String collectId) {
-        MessageResult res = new MessageResult();
-        res.setCode(0);
-        res.setObject("this is fake, will fix soon");
-        return res;
+    public Result<BlockInfo> latestBlock() {
+//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        TipSet head = null;
+        try {
+            head = listener.head();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        BlockInfo blockInfo = BlockInfo.builder()
+            .height(head.getHeight())
+            .time(new Date(head.getBlocks().get(0).getTimestamp()))
+            .build();
+        return Result.<BlockInfo>builder().data(blockInfo).build();
     }
 
     @Override
-    public MessageResult withdraw(String toAddress, BigDecimal amount, BigDecimal fee, Boolean isSync,
-        String withdrawId) {
-        MessageResult res = new MessageResult();
-        res.setCode(0);
-        res.setObject("this is fake, will fix soon");
-        return res;
-    }
-
-
-    @Override
-    public MessageResult blockHeight() {
-        MessageResult res = new MessageResult();
-        res.setCode(0);
-        res.setObject("this is fake, will fix soon");
-        return res;
-    }
-
-    @Override
-    public MessageResult balance(String address) {
+    public Result<BigDecimal> balance(String address) {
 
         BigInteger balance = wallet.balance(address);
 
-        MessageResult res = new MessageResult();
+        Result res = new Result();
         res.setCode(0);
-        res.setObject(Convert.fromAtto(balance));
+        res.setData(Convert.fromAtto(balance));
         return res;
     }
 
@@ -148,7 +167,7 @@ public class Controller implements Api {
         System.out.println("wallet receive txEvent, 补充gas已经到账，开始归集");
         Order order = repository.findOrderByTxId(txEvent.getMessage().getCid().getStr());
         if (order != null){
-            order.setStatus("done");
+            order.setStatus("confirmed");
             repository.save(order);
         }
     }

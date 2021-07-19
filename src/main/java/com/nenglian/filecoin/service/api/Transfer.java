@@ -1,12 +1,9 @@
 package com.nenglian.filecoin.service.api;
 
-import com.nenglian.filecoin.rpc.domain.types.Message;
 import java.io.Serializable;
 import java.math.BigInteger;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * @author stephen
@@ -15,9 +12,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class EasyTransfer implements Serializable {
+public class Transfer implements Serializable {
 
     String reqId;
 
@@ -39,6 +34,9 @@ public class EasyTransfer implements Serializable {
      * 私钥
      */
     private String privatekey;
+
+    // 从estimatedGas方法返回的，不需要了解具体类型，回传即可
+    String gas;
 }
 
 

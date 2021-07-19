@@ -1,9 +1,15 @@
 package com.nenglian.filecoin.service;
 
+import com.nenglian.filecoin.service.api.BlockInfo;
 import com.nenglian.filecoin.service.api.EasyTransfer;
-import com.nenglian.filecoin.service.api.MessageResult;
+import com.nenglian.filecoin.service.api.Result;
+import com.nenglian.filecoin.service.api.Reconciliation;
+import com.nenglian.filecoin.service.api.Transfer;
+import com.nenglian.filecoin.service.api.WalletAddress;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Date;
+import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,66 +26,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rpc")
 public interface Api {
 
-    @GetMapping("address")
-    MessageResult getNewAddress(@RequestParam String account, @RequestParam byte type);
+    // 1. 地址相关
+    @PostMapping("address")
+    Result<WalletAddress> createAddress(@RequestParam String account, @RequestParam byte type);
+    @GetMapping("toaddress")
+    Result<String> toAddress(@RequestParam String hexpk);
 
+    // 2. 交易相关
     @PostMapping("transfer")
-    MessageResult transfer(
-        @RequestBody EasyTransfer transfer
-    );
+    Result<String> transfer(@RequestBody Transfer transfer);
+    @PostMapping("gas")
+    Result<String> gas(@RequestBody EasyTransfer transfer);
 
+    // 3. 对账
     @GetMapping("reconciliation")
-    MessageResult reconciliation(
+    Result<List<Reconciliation>> reconciliation(
         @RequestParam @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date from,
         @RequestParam @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date to
     );
 
-    @GetMapping("toaddress")
-    MessageResult toAddress(@RequestParam String hexpk);
-
-    @GetMapping("setPollHeight")
-    MessageResult setPollHeight(@RequestParam Integer height);
+    // 4. 监听相关
+    @PostMapping("pollHeight")
+    Result setPollHeight(@RequestParam Integer fromHeight);
 
 
-
-    // TODO 查询接口
-
-    /**
-     * 获取当前区块高度
-     * @return
-     */
-    MessageResult blockHeight();
-
-
-    /**
-     * 余额
-     * @return
-     */
+    // 5. 查询相关
+    @GetMapping("latest")
+    Result<BlockInfo> latestBlock();
     @GetMapping("balance")
-    MessageResult balance(@RequestParam String address);
-
-
-
-
-
-
-
-
-
-    @GetMapping("collect")
-    MessageResult collect(
-        @RequestParam String fromAddress,
-        @RequestParam String toAddress,
-        @RequestParam String gasAddress,
-        @RequestParam String collectId );
-
-    @GetMapping("withdraw")
-    MessageResult withdraw(
-        @RequestParam String toAddress,
-        @RequestParam BigDecimal amount,
-        @RequestParam BigDecimal fee,
-        @RequestParam Boolean isSync,
-        @RequestParam String withdrawId
-    );
+    Result<BigDecimal> balance(@RequestParam String address);
 
 }

@@ -14,17 +14,7 @@ import java.io.IOException;
  */
 
 public class NodeSigner implements Signer {
-    private static final String API_ROUTER = "http://localhost:7777/rpc/v1";
-    private static final String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
-
-    protected LotusAPIFactory lotusAPIFactory = new LotusAPIFactory.Builder()
-        .apiGateway(API_ROUTER)
-        .authorization(AUTHORIZATION)
-        .connectTimeout(5)
-        .readTimeout(60)
-        .writeTimeout(30)
-        .build();
-
+    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
     private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
 
     @Override

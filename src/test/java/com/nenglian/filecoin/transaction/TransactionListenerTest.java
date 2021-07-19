@@ -1,7 +1,5 @@
 package com.nenglian.filecoin.transaction;
 
-import static org.junit.Assert.*;
-
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import java.io.IOException;
@@ -43,7 +41,7 @@ public class TransactionListenerTest {
     public void getMessagesFutureByHeightRange()
         throws IOException, ExecutionException, InterruptedException, ParseException {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        Long head = listener.head();
+        Long head = listener.headHeight();
 //        Date from = new Date(listener.getBlockHeader(head - 100).getTimestamp());
 //        Date to = new Date(listener.getBlockHeader(head - 1).getTimestamp());
 

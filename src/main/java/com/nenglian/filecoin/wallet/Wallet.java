@@ -2,6 +2,7 @@ package com.nenglian.filecoin.wallet;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
+import com.nenglian.filecoin.service.api.WalletAddress;
 import com.nenglian.filecoin.service.db.Account;
 import com.nenglian.filecoin.service.db.AccountRepository;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
@@ -37,25 +38,9 @@ import org.web3j.utils.Numeric;
 
 @Component
 public class Wallet {
-    @Data
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class WalletAddress{
-        String pubKey;
-        String address;
-    }
 
-    private static final String API_ROUTER = "http://localhost:7777/rpc/v1";
-    private static final String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
-    protected LotusAPIFactory lotusAPIFactory = new LotusAPIFactory.Builder()
-        .apiGateway(API_ROUTER)
-        .authorization(AUTHORIZATION)
-        .connectTimeout(5)
-        .readTimeout(60)
-        .writeTimeout(30)
-        .build();
-    LotusChainAPI lotusChainAPI = lotusAPIFactory.createLotusChainAPI();
+
+    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
 
     // TODO 模拟数据库
     HashMap<String, String> db = new HashMap<>();
@@ -71,11 +56,11 @@ public class Wallet {
             byte[] pub = ecPoint.getEncoded(false);
             String address = new Address(pub).toEncodedAddress();
             WalletAddress addr = WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
-            db.put(addr.address, HexUtil.encodeHexStr(ecKeyPair.getPrivateKey().toByteArray()));
+            db.put(addr.getAddress(), HexUtil.encodeHexStr(ecKeyPair.getPrivateKey().toByteArray()));
 
             Account account = new Account();
-            account.setAddress(addr.address);
-            account.setPubKey(addr.pubKey);
+            account.setAddress(addr.getAddress());
+            account.setPubKey(addr.getPubKey());
             account.setBalance(BigInteger.ZERO);
             account.setSk(HexUtil.encodeHexStr(ecKeyPair.getPrivateKey().toByteArray()));
             repository.save(account);
@@ -101,10 +86,10 @@ public class Wallet {
         byte[] pub = Sign.publicPointFromPrivate(Numeric.toBigInt(priv)).getEncoded(false);
         String address = new Address(pub).toEncodedAddress();
         WalletAddress addr = WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
-        db.put(addr.address, HexUtil.encodeHexStr(priv));
+        db.put(addr.getAddress(), HexUtil.encodeHexStr(priv));
         Account account = new Account();
-        account.setAddress(addr.address);
-        account.setPubKey(addr.pubKey);
+        account.setAddress(addr.getAddress());
+        account.setPubKey(addr.getPubKey());
         account.setBalance(BigInteger.ZERO);
         account.setSk(HexUtil.encodeHexStr(priv));
         repository.save(account);

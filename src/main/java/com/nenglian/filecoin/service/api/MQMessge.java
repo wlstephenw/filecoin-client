@@ -7,12 +7,12 @@ import lombok.Data;
 
 /**
  * @author stephen
- * @since 2021/7/16 下午12:08
+ * @since 2021/7/19 上午11:03
  */
 
 @Data
 @Builder
-public class Reconciliation {
+public class MQMessge {
     String reqId;
     String txId;
     String from;

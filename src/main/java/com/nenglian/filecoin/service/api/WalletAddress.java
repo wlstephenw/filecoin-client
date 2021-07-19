@@ -7,14 +7,14 @@ import lombok.NoArgsConstructor;
 
 /**
  * @author stephen
- * @since 2021/7/13 下午4:53
+ * @since 2021/7/19 上午11:16
  */
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class MessageResult {
-    int code;
-    String msg;
-    Object object;
+public class WalletAddress{
+    String pubKey;
+    String address;
 }

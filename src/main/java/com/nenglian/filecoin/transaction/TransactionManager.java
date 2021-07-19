@@ -9,9 +9,9 @@ import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
+import com.nenglian.filecoin.service.api.EasyTransfer;
 import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.Wallet;
-import com.nenglian.filecoin.service.api.EasyTransfer;
 import java.io.IOException;
 import java.math.BigInteger;
 import org.springframework.stereotype.Component;
@@ -31,27 +31,10 @@ public class TransactionManager {
         this.wallet = wallet;
     }
 
-    private static final String API_ROUTER = "http://localhost:7777/rpc/v1";
-    private static final String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
-    protected LotusAPIFactory lotusAPIFactory = new LotusAPIFactory.Builder()
-        .apiGateway(API_ROUTER)
-        .authorization(AUTHORIZATION)
-        .connectTimeout(5)
-        .readTimeout(60)
-        .writeTimeout(30)
-        .build();
-
+    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
     private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
 
-
-
-    public Address createAddress(){
-
-        return null;
-    }
-
     public Message getGas(Message message){
-
         MessageSendSpec messageSendSpec = null;
         TipSetKey tsk = null;
         try {
@@ -78,28 +61,36 @@ public class TransactionManager {
         return response.getResult();
     }
 
-    public Cid easyTransfer(EasyTransfer send){
-        if (send == null || StrUtil.isBlank(send.getFrom())
-            || StrUtil.isBlank(send.getTo())
-            || send.getValue() == null) {
+    public Message estimateGas(EasyTransfer tx){
+        return getGas(Message.builder().from(tx.getFrom())
+            .to(tx.getTo())
+            .value(tx.getValue()).build());
+    }
+
+    public Cid easyTransfer(EasyTransfer tx){
+        //获取gas
+        Message gas = estimateGas(tx);
+        return this.easyTransfer(tx, gas);
+    }
+
+    public Cid easyTransfer(EasyTransfer tx, Message gas){
+        if (tx == null || StrUtil.isBlank(tx.getFrom())
+            || StrUtil.isBlank(tx.getTo())
+            || tx.getValue() == null) {
             throw new RuntimeException("parameter cannot be empty");
         }
-        //获取gas
-        Message gas = getGas(Message.builder().from(send.getFrom())
-            .to(send.getTo())
-            .value(send.getValue()).build());
         //获取nonce
-        long nonce = getNonce(send.getFrom());
+        long nonce = getNonce(tx.getFrom());
         //拼装交易参数
-        Message transaction = Message.builder().from(send.getFrom())
-            .to(send.getTo())
+        Message transaction = Message.builder().from(tx.getFrom())
+            .to(tx.getTo())
             .gasFeeCap(gas.getGasFeeCap())
             .gasLimit(gas.getGasLimit() * 2)
             .gasPremium(gas.getGasPremium())
             .method(0L)
             .nonce( nonce)
             .params("")
-            .value(new BigInteger(send.getValue().toString())).build();
+            .value(new BigInteger(tx.getValue().toString())).build();
 
          return send(transaction);
     }

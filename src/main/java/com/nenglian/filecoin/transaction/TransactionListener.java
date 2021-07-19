@@ -48,20 +48,10 @@ import org.springframework.stereotype.Component;
 @Component
 @EnableScheduling
 public class TransactionListener {
-    private static final String API_ROUTER = "http://localhost:7777/rpc/v1";
-    private static final String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
-    protected LotusAPIFactory lotusAPIFactory = new LotusAPIFactory.Builder()
-        .apiGateway(API_ROUTER)
-        .authorization(AUTHORIZATION)
-        .connectTimeout(5)
-        .readTimeout(60)
-        .writeTimeout(30)
-        .build();
+    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
     LotusChainAPI lotusChainAPI = lotusAPIFactory.createLotusChainAPI();
 
-
     AtomicInteger latestBlock = new AtomicInteger(18130);
-
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
@@ -103,7 +93,11 @@ public class TransactionListener {
         return receipt;
     }
 
-    public Long head() throws IOException {
+    public TipSet head() throws IOException {
+        return lotusChainAPI.head().execute().getResult();
+    }
+
+    public Long headHeight() throws IOException {
         return lotusChainAPI.head().execute().getResult().getHeight();
     }
 

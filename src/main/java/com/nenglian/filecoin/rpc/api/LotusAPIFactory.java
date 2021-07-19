@@ -64,6 +64,19 @@ public class LotusAPIFactory {
         return jsonRpcRetrofit.create(apiClass);
     }
 
+    public static LotusAPIFactory create() {
+        String API_ROUTER = "http://localhost:7777/rpc/v1";
+        String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
+        return new LotusAPIFactory.Builder()
+            .apiGateway(API_ROUTER)
+            .authorization(AUTHORIZATION)
+            .connectTimeout(5)
+            .readTimeout(60)
+            .writeTimeout(30)
+            .build();
+
+    }
+
     public static class Builder {
         private static final int DEFAULT_READ_TIMEOUT = 30;
         private static final int DEFAULT_CONNECT_TIMEOUT = 5;
