@@ -13,7 +13,6 @@ import lombok.Data;
 @Data
 @Builder
 public class Reconciliation {
-    String reqId;
     String txId;
     String from;
     String to;
