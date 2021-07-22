@@ -2,6 +2,7 @@ package com.nenglian.filecoin.transaction.dto;
 
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
+import java.util.Date;
 import lombok.Builder;
 import lombok.Data;
 import lombok.ToString;
@@ -17,4 +18,6 @@ import lombok.ToString;
 public class TxEvent {
     Message message;
     MessageReceipt receipt;
+    Long blockHeight;
+    Long blockTime;
 }

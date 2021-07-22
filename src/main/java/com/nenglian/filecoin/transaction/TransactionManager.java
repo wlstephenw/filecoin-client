@@ -1,5 +1,8 @@
 package com.nenglian.filecoin.transaction;
 
+import cn.hutool.core.codec.Base32;
+import cn.hutool.core.codec.Base64;
+import cn.hutool.core.util.HexUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
 import com.nenglian.filecoin.rpc.api.LotusGasAPI;
@@ -9,10 +12,13 @@ import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
-import com.nenglian.filecoin.service.api.EasyTransfer;
+import com.nenglian.filecoin.service.api.Transfer;
 import com.nenglian.filecoin.wallet.Wallet;
 import java.io.IOException;
 import java.math.BigInteger;
+import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -22,7 +28,9 @@ import org.springframework.stereotype.Component;
 
 // TODO all runtime exception needs to be checked and see if they can be checked exception
 @Component
+@Data
 public class TransactionManager {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionManager.class);
 
     Wallet wallet;
 
@@ -33,7 +41,7 @@ public class TransactionManager {
     protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
     private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
 
-    public Message getGas(Message message){
+    private Message getGas(Message message){
         MessageSendSpec messageSendSpec = null;
         TipSetKey tsk = null;
         try {
@@ -60,25 +68,25 @@ public class TransactionManager {
         return response.getResult();
     }
 
-    public Message estimateGas(EasyTransfer tx){
+    public Message estimateGas(Transfer tx){
         return getGas(Message.builder().from(tx.getFrom())
             .to(tx.getTo())
             .value(tx.getValue()).build());
     }
 
-    public Cid signAndSend(EasyTransfer tx){
+    public Cid signAndSend(Transfer tx){
         //获取gas
         Message gas = estimateGas(tx);
         return this.signAndSend(tx, gas);
     }
 
-    public SignedMessage sign(EasyTransfer tx){
+    public SignedMessage sign(Transfer tx){
         //获取gas
         Message gas = estimateGas(tx);
         return this.sign(tx, gas);
     }
 
-    public Cid signAndSend(EasyTransfer tx, Message gas){
+    public Cid signAndSend(Transfer tx, Message gas){
         if (tx == null || StrUtil.isBlank(tx.getFrom())
             || StrUtil.isBlank(tx.getTo())
             || tx.getValue() == null) {
@@ -89,7 +97,7 @@ public class TransactionManager {
         return send(signedMessage);
     }
 
-    public SignedMessage sign(EasyTransfer tx, Message gas){
+    public SignedMessage sign(Transfer tx, Message gas){
         if (tx == null || StrUtil.isBlank(tx.getFrom())
             || StrUtil.isBlank(tx.getTo())
             || tx.getValue() == null) {
@@ -99,22 +107,24 @@ public class TransactionManager {
         return this.sign(transaction);
     }
 
-    private Message buildMessage(EasyTransfer tx, Message gas) {
+    private Message buildMessage(Transfer tx, Message gas) {
         //获取nonce
         long nonce = getNonce(tx.getFrom());
         //拼装交易参数
-        return Message.builder().from(tx.getFrom())
+        return Message.builder()
+            .version(0L)
+            .from(tx.getFrom())
             .to(tx.getTo())
             .gasFeeCap(gas.getGasFeeCap())
             .gasLimit(gas.getGasLimit() * 2)
             .gasPremium(gas.getGasPremium())
             .method(0L)
-            .nonce( nonce)
+            .nonce(nonce)
             .params("")
             .value(new BigInteger(tx.getValue().toString())).build();
     }
 
-    public SignedMessage sign(Message transaction){
+    private SignedMessage sign(Message transaction){
         if (transaction == null || StrUtil.isBlank(transaction.getFrom())
             || StrUtil.isBlank(transaction.getTo())
             || transaction.getGasLimit() == null
@@ -129,15 +139,30 @@ public class TransactionManager {
             throw new RuntimeException("the transfer amount must be greater than 0");
         }
 
-        return wallet.getSigner(transaction.getFrom()).sign(transaction);
+        SignedMessage signedMessage = wallet.getSigner(transaction.getFrom()).sign(transaction);
+        if (signedMessage.getMessage().getCid() == null) {
+            signedMessage.getMessage().setCid(this.getTxId(transaction));
+        }
+        return signedMessage;
+    }
 
+    public Message getMessage(Cid cid){
+        try {
+            return lotusAPIFactory.createLotusChainAPI().getMessage(cid).execute().getResult();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Cid send(SignedMessage signedMessage){
-
         // TODO send to network
         try {
-            return lotusAPIFactory.createLotusMPoolAPI().push(signedMessage).execute().getResult();
+            Cid cid = lotusAPIFactory.createLotusMPoolAPI().push(signedMessage).execute().getResult();
+            Message message = this.getMessage(cid);
+            Cid msgCid = message.getCid();
+            logger.info("sending tx, cid: {}, msgCid:{}, tx: {}", cid, msgCid, signedMessage);
+            return msgCid;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -145,10 +170,23 @@ public class TransactionManager {
         return signedMessage.getMessage().getCid();
     }
 
+    private Cid getTxId(Message transaction){
+        byte[] cidHash = getcidHash(transaction);
+        logger.info("cid Hash is: {}", HexUtil.encodeHexStr(cidHash));
+        return Cid.of(Base32.encode(cidHash));
+    }
 
-
-
-
+    private byte[] getcidHash(Message transaction){
+        TransactionSerializer transactionSerializer = new TransactionSerializer();
+        byte[] cidHash = null;
+        try {
+            cidHash = transactionSerializer.transactionSerialize(transaction);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("transaction entity serialization failed");
+        }
+        return cidHash;
+    }
 
 
 

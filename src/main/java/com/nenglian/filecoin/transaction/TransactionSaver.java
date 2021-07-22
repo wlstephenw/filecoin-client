@@ -18,7 +18,7 @@ public class TransactionSaver {
     TxRepository repository;
     @EventListener
     public void handleTxEvent(TxEvent txEvent) {
-        System.out.println("wallet receive txEvent, 保存到数据库");
+//        System.out.println("wallet receive txEvent, 保存到数据库");
         repository.save(txEvent.getMessage());
     }
 }

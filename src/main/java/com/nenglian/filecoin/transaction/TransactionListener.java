@@ -15,6 +15,7 @@ import com.nenglian.filecoin.rpc.domain.types.TipSet;
 import com.nenglian.filecoin.rpc.jasonrpc.Call;
 import com.nenglian.filecoin.rpc.jasonrpc.Callback;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
+import com.nenglian.filecoin.service.Controller;
 import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.transaction.dto.TxEvent;
 import java.io.IOException;
@@ -36,6 +37,8 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import javafx.util.Pair;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -50,10 +53,11 @@ import org.springframework.stereotype.Component;
 @Component
 @EnableScheduling
 public class TransactionListener {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionListener.class);
     protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
     LotusChainAPI lotusChainAPI = lotusAPIFactory.createLotusChainAPI();
 
-    AtomicInteger latestBlock = new AtomicInteger(18130);
+    AtomicInteger latestBlock = new AtomicInteger(200);
     @Autowired
     private ApplicationEventPublisher applicationEventPublisher;
 
@@ -62,7 +66,7 @@ public class TransactionListener {
     public void listen() throws IOException {
 
         Long head = lotusChainAPI.head().execute().getResult().getHeight();
-        while (latestBlock.get() <= head){
+        while (latestBlock.get() < head){
             int i = latestBlock.getAndIncrement();
             System.out.println("scan block: " + i);
             process(i);
@@ -74,9 +78,14 @@ public class TransactionListener {
         future.whenComplete((map, error) -> {
             if (map.size() > 0) {
                 map.forEach((cid, ev) -> {
-                    System.out.println("交易内容:" + ev.getMessage());
-                    System.out.println("交易结果:" + ev.getReceipt());
-                    applicationEventPublisher.publishEvent(ev);
+                    logger.info("cid: {}, 交易内容:{}", ev.getMessage().getCid(), ev.getMessage());
+                    logger.info("交易结果:{}", ev.getReceipt());
+                    logger.info("交易高度:{}",  ev.getBlockHeight());
+                    try {
+                        applicationEventPublisher.publishEvent(ev);
+                    }catch (Exception e){
+                        logger.error("error:", e);
+                    }
                 });
 
             }
@@ -84,17 +93,25 @@ public class TransactionListener {
         });
     }
 
-    private MessageReceipt getReceipt(Cid cid) {
+    public MessageReceipt getReceipt(Cid cid) {
         LotusStateAPI stateAPI = lotusAPIFactory.createLotusStateAPI();
         MessageReceipt receipt;
         try {
-            MsgLookup msgLookup = stateAPI
-                .searchMsg(cid).execute().getResult();
+            MsgLookup msgLookup = this.getMsgLookup(cid);
             receipt = msgLookup.getReceipt();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         return receipt;
+    }
+
+    public MsgLookup getMsgLookup(Cid cid) throws IOException {
+        LotusStateAPI stateAPI = lotusAPIFactory.createLotusStateAPI();
+
+            return stateAPI
+                .searchMsg(cid).execute().getResult();
+
+
     }
 
     public TipSet head() throws IOException {
@@ -151,13 +168,15 @@ public class TransactionListener {
         return listCompletableFuture;
     }
 
-    private CompletableFuture<Map<Cid, TxEvent>> getMessagesFutureByHeight(long height) {
+    public CompletableFuture<Map<Cid, TxEvent>> getMessagesFutureByHeight(long height) {
         // 根据固定高度拉去TipSet
         CompletableFuture<TipSet> tipSetFuture = call(() -> lotusChainAPI.getTipSetByHeight(height, null));
         // 获取所有状态OK的消息
         return tipSetFuture.thenCompose((ts) -> {
             // 获取当前高度的区块
             List<Cid> blockCids = ts.getCids();
+            // block number must larger than 0
+            final Long blockTime  = ts.getBlocks().get(0).getTimestamp();
             // 获取每个区块的消息列表
             CompletableFuture<?>[] futureArray =
                 blockCids.stream()
@@ -181,6 +200,8 @@ public class TransactionListener {
                             TxEvent.builder()
                                 .message(blsMessages.get(i))
                                 .receipt(getReceipt(blsMessages.get(i).getCid()))
+                                .blockHeight(height)
+                                .blockTime(blockTime)
                                 .build()));
                     }
                     for (int i = 0; i < signedMessages.size(); ++i) {
@@ -190,6 +211,8 @@ public class TransactionListener {
                             TxEvent.builder()
                                 .message(signedMessages.get(i))
                                 .receipt(getReceipt(signedMessages.get(i).getCid()))
+                                .blockHeight(height)
+                                .blockTime(blockTime)
                                 .build()));
                     }
                     return builder.build();

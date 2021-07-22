@@ -2,7 +2,7 @@ package com.nenglian.filecoin.wallet;
 
 
 import cn.hutool.core.lang.Assert;
-import com.nenglian.filecoin.wallet.Wallet.WalletAddress;
+import com.nenglian.filecoin.service.api.WalletAddress;
 import org.junit.jupiter.api.Test;
 
 /**

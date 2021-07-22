@@ -6,10 +6,11 @@ logging:
 spring:
   data:
     mongodb:
-#      authentication-database: admin
-#      username: root
-#      password: root
       database: test_db
       port: 27017
       host: 192.168.1.22
 
+rocketmq:
+  name-server: 192.168.1.22:9876
+  producer:
+    group: filecoin-group

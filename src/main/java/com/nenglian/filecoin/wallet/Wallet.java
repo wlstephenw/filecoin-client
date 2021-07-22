@@ -2,6 +2,7 @@ package com.nenglian.filecoin.wallet;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
+import com.nenglian.filecoin.service.Controller;
 import com.nenglian.filecoin.service.api.WalletAddress;
 import com.nenglian.filecoin.service.db.Account;
 import com.nenglian.filecoin.service.db.AccountRepository;
@@ -23,6 +24,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bouncycastle.math.ec.ECPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -38,6 +41,7 @@ import org.web3j.utils.Numeric;
 
 @Component
 public class Wallet {
+    private static final Logger logger = LoggerFactory.getLogger(Wallet.class);
 
 
     protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
@@ -85,15 +89,19 @@ public class Wallet {
     private WalletAddress importkey(byte[] priv) {
         byte[] pub = Sign.publicPointFromPrivate(Numeric.toBigInt(priv)).getEncoded(false);
         String address = new Address(pub).toEncodedAddress();
+
         WalletAddress addr = WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
+        Account account = repository.findAccountByAddress(address);
+        if (account != null){
+            return addr;
+        }
         db.put(addr.getAddress(), HexUtil.encodeHexStr(priv));
-        Account account = new Account();
+        account = new Account();
         account.setAddress(addr.getAddress());
         account.setPubKey(addr.getPubKey());
         account.setBalance(BigInteger.ZERO);
         account.setSk(HexUtil.encodeHexStr(priv));
         repository.save(account);
-
         return addr;
     }
 
@@ -120,18 +128,22 @@ public class Wallet {
 
     @EventListener
     public void handleTxEvent(TxEvent txEvent) {
-        System.out.println("wallet receive txEvent, update balance");
-        System.out.println(txEvent);
-        Account from = repository.findAccountByAddress(txEvent.getMessage().getFrom());
-        if (from != null){
-            from.setBalance(from.getBalance().subtract(txEvent.getMessage().getValue()));
-            repository.save(from);
-        }
-        Account to = repository.findAccountByAddress(txEvent.getMessage().getTo());
-        if (to != null){
-            to.setBalance(to.getBalance().add(txEvent.getMessage().getValue()));
-            repository.save(to);
-        }
+//        Account from = repository.findAccountByAddress(txEvent.getMessage().getFrom());
+//        if (from != null){
+//            from.setBalance(from.getBalance().subtract(txEvent.getMessage().getValue()));
+//            logger.info("update balance for: {}, balance:{}", from.getAddress(), from.getBalance());
+//            repository.save(from);
+//        }
+//        Account to = repository.findAccountByAddress(txEvent.getMessage().getTo());
+//        if (to != null){
+//            to.setBalance(to.getBalance().add(txEvent.getMessage().getValue()));
+//            logger.info("update balance for: {}, balance:{}", to.getAddress(), to.getBalance());
+//            repository.save(to);
+//        }
+    }
+
+    public Account get(String address){
+        return repository.findAccountByAddress(address);
     }
 
 

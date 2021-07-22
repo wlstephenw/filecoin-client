@@ -35,6 +35,7 @@ dependencies {
     implementation 'com.alibaba:fastjson:1.2.38'
 
 
+    implementation "org.apache.rocketmq:rocketmq-spring-boot-starter:2.0.3"
 
 
     compileOnly 'org.projectlombok:lombok'

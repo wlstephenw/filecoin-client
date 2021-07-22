@@ -1,12 +1,10 @@
 package com.nenglian.filecoin.service;
 
 import com.nenglian.filecoin.service.api.BlockInfo;
-import com.nenglian.filecoin.service.api.EasyTransfer;
-import com.nenglian.filecoin.service.api.Result;
 import com.nenglian.filecoin.service.api.Reconciliation;
+import com.nenglian.filecoin.service.api.Result;
 import com.nenglian.filecoin.service.api.Transfer;
 import com.nenglian.filecoin.service.api.WalletAddress;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
@@ -26,34 +24,70 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rpc")
 public interface Api {
 
-    // 1. 地址相关
+    /**
+     * create address of the given type
+     *
+     * @param type
+     * @return
+     */
     @PostMapping("address")
-    Result<WalletAddress> createAddress(@RequestParam String account, @RequestParam byte type);
-    @GetMapping("toaddress")
-    Result<String> toAddress(@RequestParam String hexpk);
+    Result<WalletAddress> createAddress(@RequestParam byte type);
 
-    // 2. 交易相关
+    /**
+     * perform transfer transaction
+     *
+     * @param transfer
+     * @return
+     */
     @PostMapping("transfer")
     Result<String> transfer(@RequestBody Transfer transfer);
-    @PostMapping("gas")
-    Result<String> gas(@RequestBody EasyTransfer transfer);
 
-    // 3. 对账
+    /**
+     * get transactions from chain at the given time range
+     *
+     * @param from
+     * @param to
+     * @return
+     */
     @GetMapping("reconciliation")
     Result<List<Reconciliation>> reconciliation(
-        @RequestParam @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date from,
-        @RequestParam @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date to
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date from,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date to
     );
 
-    // 4. 监听相关
+    /**
+     * set block height to be replayed from
+     *
+     * @param fromHeight
+     * @return
+     */
     @PostMapping("pollHeight")
-    Result setPollHeight(@RequestParam Integer fromHeight);
+    Result setPollHeight(@RequestParam Long fromHeight);
 
-
-    // 5. 查询相关
+    /**
+     * get latest block info
+     *
+     * @return
+     */
     @GetMapping("latest")
     Result<BlockInfo> latestBlock();
+
+    /**
+     * get local coin or token balance of the given address
+     *
+     * @param
+     * @return
+     */
     @GetMapping("balance")
-    Result<BigDecimal> balance(@RequestParam String address);
+    Result<BigInteger> balance(@RequestParam String address, @RequestParam String tokenAddress);
+
+    /**
+     * derive address from hexadecimal public key
+     *
+     * @param hexPk
+     * @return
+     */
+    @GetMapping("deriveAddress")
+    Result<String> toAddress(@RequestParam String hexPk);
 
 }

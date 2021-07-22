@@ -38,6 +38,8 @@ public class KeySigner implements Signer {
         ECKeyPair ecKeyPair = ECKeyPair.create(HexUtil.decodeHex(this.privateKey));
         org.web3j.crypto.Sign.SignatureData signatureData = org.web3j.crypto.Sign.signMessage(cidHash,
             ecKeyPair, false);
+
+
         Signature signature = new Signature();
         signature.setType(SigType.SigTypeSecp256k1);
         signature.setData( Base64.encode(getSignature(signatureData)));

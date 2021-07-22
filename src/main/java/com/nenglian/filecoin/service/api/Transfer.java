@@ -1,6 +1,7 @@
 package com.nenglian.filecoin.service.api;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import lombok.Builder;
 import lombok.Data;
@@ -9,34 +10,50 @@ import lombok.Data;
  * @author stephen
  * @since 2021/7/14 下午1:59
  */
-
 @Data
 @Builder
 public class Transfer implements Serializable {
 
+    /**
+     * 请求ID
+     */
     String reqId;
 
+    /**
+     * token合约地址
+     */
     String tokenAddress;
 
     /**
-     * 转账方地址
+     * GAS资产账户地址
+     */
+    String gasAddress;
+
+    /**
+     * 付款方地址
      */
     private String from;
+
     /**
-     * 收账方地址
+     * 收款方地址
      */
     private String to;
+
     /**
      * 转账金额
      */
     private BigInteger value;
+
     /**
-     * 私钥
+     * Gas加速因子
      */
-    private String privatekey;
+    private BigDecimal gasSpeedUp;
 
-    // 从estimatedGas方法返回的，不需要了解具体类型，回传即可
-    String gas;
+    /**
+     * 手续费是否包含在value内（仅对本币交易有意义）
+     * <p>
+     * true - value = 实际转账金额 + 手续费
+     * false - value = 实际转账金额
+     */
+    private Boolean feeInclusive;
 }
-
-

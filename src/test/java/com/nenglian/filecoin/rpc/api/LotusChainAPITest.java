@@ -129,9 +129,11 @@ public class LotusChainAPITest extends AbstractLotusAPITest {
 
     @Test
     public void getMessage() throws IOException {
-        Cid cid = Cid.of("bafy2bzaceadp7suv63bi3p2jtl633hfqrfufiujc2srmouwplubfrqyntnly2");
+        Cid cid = Cid.of("bafy2bzaceb27xv5o5c7lo7egaccszro7m4hzbxemunot2kdgdullh6vh34prs");
+        Cid cid1 = Cid.of("bafy2bzaceceh3g2ihrg7m2xok56do3puvfgmfsohxl4bnb4jt7wwni6ppp4xm");
 
         Response<com.nenglian.filecoin.rpc.domain.types.Message> response = lotusChainAPI.getMessage(cid).execute();
+        Response<com.nenglian.filecoin.rpc.domain.types.Message> response1 = lotusChainAPI.getMessage(cid1).execute();
         Assert.assertNotNull(response.getResult());
     }
 
@@ -153,7 +155,7 @@ public class LotusChainAPITest extends AbstractLotusAPITest {
 
     @Test
     public void getMessagesByHeight() throws ExecutionException, InterruptedException {
-        long height = 543360L;
+        long height = 131L;
         Map<Cid, com.nenglian.filecoin.rpc.domain.types.Message> messages
                 = getMessagesFutureByHeight(height).get();
         Set<Cid> cids = getMessageCidsFutureByHeight(height).get();

@@ -2,6 +2,7 @@ package com.nenglian.filecoin.transaction;
 
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
+import com.nenglian.filecoin.transaction.dto.TxEvent;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -52,10 +53,10 @@ public class TransactionListenerTest {
         System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(to));
 
 
-        CompletableFuture<Map<Cid, Message>> future = listener
+        CompletableFuture<Map<Cid, TxEvent>> future = listener
             .getMessagesFutureByHeightRange(from, to);
 
-        Map<Cid, Message> map = future.get();
+        Map<Cid, TxEvent> map = future.get();
 
         Assert.assertNotNull(map);
     }

@@ -210,11 +210,14 @@ public class LotusStateAPITest extends AbstractLotusAPITest {
     @Test
     public void getReceipt() throws IOException {
 
+        Cid cid = Cid.of("bafy2bzacecvgtojtomcr3iwns5jyzdkmhehpnk3kpibc54ydql3ahjfdf5t22");
+//        Cid cid = Cid.of("bafy2bzaceavrrdghgjnvffme3usmx7qbdrnojiqje4b5orw5nyeionxm346iu");
+
         MessageReceipt receipt = lotusStateAPI
-            .getReceipt(Cid.of("bafy2bzacecta3r2aw4lvxtxra2e6azvpwppy763nwky2d4xl2hhnkzhafa4ey")).execute().getResult();
+            .getReceipt(cid).execute().getResult();
 
         MsgLookup msgLookup = lotusStateAPI
-            .searchMsg(Cid.of("bafy2bzacecta3r2aw4lvxtxra2e6azvpwppy763nwky2d4xl2hhnkzhafa4ey")).execute().getResult();
+            .searchMsg(cid).execute().getResult();
         MessageReceipt receipt1 = msgLookup.getReceipt();
         Assert.assertNotNull(receipt1);
     }
