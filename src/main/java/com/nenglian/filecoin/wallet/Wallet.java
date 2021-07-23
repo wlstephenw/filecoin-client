@@ -76,22 +76,34 @@ public class Wallet {
         return null;
     }
 
+    public String createNodeAddress(){
+        try {
+            return lotusAPIFactory.createLotusWalletAPI().create("secp256k1").execute().getResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public WalletAddress importBase64Key(String base64SK){
         byte[] priv = Base64.decode(base64SK);
         return importkey(priv);
     }
 
     public WalletAddress importHexKey(String hexSK){
-        byte[] priv = Base64.decode(hexSK);
+        byte[] priv = HexUtil.decodeHex(hexSK);
         return importkey(priv);
     }
 
-    private WalletAddress importkey(byte[] priv) {
+    public WalletAddress getWalletAddresFromSk(byte[] priv){
         byte[] pub = Sign.publicPointFromPrivate(Numeric.toBigInt(priv)).getEncoded(false);
         String address = new Address(pub).toEncodedAddress();
+        return WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
+    }
 
-        WalletAddress addr = WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
-        Account account = repository.findAccountByAddress(address);
+    private WalletAddress importkey(byte[] priv) {
+        WalletAddress addr = this.getWalletAddresFromSk(priv);
+        Account account = repository.findAccountByAddress(addr.getAddress());
         if (account != null){
             return addr;
         }

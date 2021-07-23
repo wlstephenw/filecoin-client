@@ -1,7 +1,6 @@
 package com.nenglian.filecoin.transaction;
 
 import cn.hutool.core.codec.Base32;
-import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
 import cn.hutool.core.util.StrUtil;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
@@ -14,6 +13,7 @@ import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
 import com.nenglian.filecoin.service.api.Transfer;
 import com.nenglian.filecoin.wallet.Wallet;
+import com.nenglian.filecoin.wallet.signer.Signer;
 import java.io.IOException;
 import java.math.BigInteger;
 import lombok.Data;
@@ -74,37 +74,19 @@ public class TransactionManager {
             .value(tx.getValue()).build());
     }
 
-    public Cid signAndSend(Transfer tx){
-        //获取gas
-        Message gas = estimateGas(tx);
-        return this.signAndSend(tx, gas);
-    }
 
-    public SignedMessage sign(Transfer tx){
-        //获取gas
-        Message gas = estimateGas(tx);
-        return this.sign(tx, gas);
-    }
-
-    public Cid signAndSend(Transfer tx, Message gas){
+    public SignedMessage sign(Transfer tx, Message gas, Signer signer){
         if (tx == null || StrUtil.isBlank(tx.getFrom())
             || StrUtil.isBlank(tx.getTo())
             || tx.getValue() == null) {
             throw new RuntimeException("parameter cannot be empty");
         }
+        if (gas == null)
+            gas  = estimateGas(tx);
         Message transaction = buildMessage(tx, gas);
-        SignedMessage signedMessage = this.sign(transaction);
-        return send(signedMessage);
-    }
-
-    public SignedMessage sign(Transfer tx, Message gas){
-        if (tx == null || StrUtil.isBlank(tx.getFrom())
-            || StrUtil.isBlank(tx.getTo())
-            || tx.getValue() == null) {
-            throw new RuntimeException("parameter cannot be empty");
-        }
-        Message transaction = buildMessage(tx, gas);
-        return this.sign(transaction);
+        if (signer == null)
+            signer = this.wallet.getSigner(transaction.getFrom());
+        return this.sign(transaction, signer);
     }
 
     private Message buildMessage(Transfer tx, Message gas) {
@@ -124,7 +106,8 @@ public class TransactionManager {
             .value(new BigInteger(tx.getValue().toString())).build();
     }
 
-    private SignedMessage sign(Message transaction){
+
+    SignedMessage sign(Message transaction, Signer signer){
         if (transaction == null || StrUtil.isBlank(transaction.getFrom())
             || StrUtil.isBlank(transaction.getTo())
             || transaction.getGasLimit() == null
@@ -138,12 +121,7 @@ public class TransactionManager {
         if (account.compareTo(BigInteger.ZERO) < 0) {
             throw new RuntimeException("the transfer amount must be greater than 0");
         }
-
-        SignedMessage signedMessage = wallet.getSigner(transaction.getFrom()).sign(transaction);
-        if (signedMessage.getMessage().getCid() == null) {
-            signedMessage.getMessage().setCid(this.getTxId(transaction));
-        }
-        return signedMessage;
+        return signer.sign(transaction);
     }
 
     public Message getMessage(Cid cid){
@@ -158,11 +136,9 @@ public class TransactionManager {
     public Cid send(SignedMessage signedMessage){
         // TODO send to network
         try {
+            logger.info("sending tx, cid: {},  tx: {}", signedMessage.getMessage().getCid(), signedMessage);
             Cid cid = lotusAPIFactory.createLotusMPoolAPI().push(signedMessage).execute().getResult();
-            Message message = this.getMessage(cid);
-            Cid msgCid = message.getCid();
-            logger.info("sending tx, cid: {}, msgCid:{}, tx: {}", cid, msgCid, signedMessage);
-            return msgCid;
+            return cid;
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -180,7 +156,7 @@ public class TransactionManager {
         TransactionSerializer transactionSerializer = new TransactionSerializer();
         byte[] cidHash = null;
         try {
-            cidHash = transactionSerializer.transactionSerialize(transaction);
+            cidHash = transactionSerializer.getCidHash(transaction);
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("transaction entity serialization failed");

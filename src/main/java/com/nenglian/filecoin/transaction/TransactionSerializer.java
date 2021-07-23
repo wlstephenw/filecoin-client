@@ -6,9 +6,12 @@ import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
+import com.nenglian.filecoin.rpc.cid.Cid;
+import com.nenglian.filecoin.rpc.cid.Cid.Codec;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.FilecoinCnt;
+import io.ipfs.multihash.Multihash.Type;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -21,8 +24,32 @@ public class TransactionSerializer {
      *
      * @param transaction 交易实体
      */
-    public byte[] transactionSerialize(Message transaction) throws  IOException {
+    public byte[] getCidHash(Message transaction) throws  IOException {
+        Cid cid = this.getCid(transaction);
+        Blake2b.Param param = new Blake2b.Param();
+        param.setDigestLength(32);
+        byte[] hash = Blake2b.Digest.newInstance(param).digest(cid.toBytes());
+        return hash;
+    }
+
+    public Cid getCid(Message transaction) throws IOException {
+        byte[] serialize = this.serialize(transaction);
+
+        Blake2b.Param param = new Blake2b.Param();
+        param.setDigestLength(32);
+        byte[] hash = Blake2b.Digest.newInstance(param).digest(serialize);
+
+        return Cid
+            .buildCidV1(Codec.DagCbor, Type.blake2b_256, hash);
+    }
+
+
+    public byte[] serialize(Message transaction) throws  IOException {
         int versions = 0;
+        if (transaction.getVersion() != null){
+            versions = transaction.getVersion().intValue();
+        }
+
         ByteString fromByte = new ByteString(Address.from(transaction.getFrom()).getBytes());
         ByteString toByte = new ByteString(Address.from(transaction.getTo()).getBytes());
         UnsignedInteger versionByte = new UnsignedInteger(versions);
@@ -45,59 +72,30 @@ public class TransactionSerializer {
         ByteString paramsByte = new ByteString(new byte[]{});
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] cidHash = null;
+        byte[] encodedBytes = null;
         try {
             CborEncoder encoder = new CborEncoder(baos);
             List<DataItem> build = new CborBuilder().addArray()
-                    .add(versionByte)
-                    .add(toByte)
-                    .add(fromByte)
-                    .add(nonceByte)
-                    .add(valueByte)
-                    .add(gasLimitByte)
-                    .add(gasFeeCapByte)
-                    .add(gasPeremiumByte)
-                    .add(methodByte)
-                    .add(paramsByte)
-                    .end().build();
+                .add(versionByte)
+                .add(toByte)
+                .add(fromByte)
+                .add(nonceByte)
+                .add(valueByte)
+                .add(gasLimitByte)
+                .add(gasFeeCapByte)
+                .add(gasPeremiumByte)
+                .add(methodByte)
+                .add(paramsByte)
+                .end().build();
             encoder.encode(build);
-            byte[] encodedBytes = baos.toByteArray();
-            cidHash = getCidHash(encodedBytes);
+            encodedBytes = baos.toByteArray();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             baos.close();
         }
-        return cidHash;
+        return encodedBytes;
     }
-
-    /**
-     * 形成摘要需要拼接的字符串
-     */
-    private byte[] CID_PREFIX = new byte[]{0x01, 0x71, (byte) 0xa0, (byte) 0xe4, 0x02, 0x20};
-
-    /**
-     * @param message 交易结构体的序列化字节
-     *                通过交易结构体字节获取CidHash
-     */
-    public byte[] getCidHash(byte[] message) {
-        Blake2b.Param param = new Blake2b.Param();
-        param.setDigestLength(32);
-
-        //消息体字节
-        byte[] messageByte = Blake2b.Digest.newInstance(param).digest(message);
-
-        int xlen = CID_PREFIX.length;
-        int ylen = messageByte.length;
-
-        byte[] result = new byte[xlen + ylen];
-
-        System.arraycopy(CID_PREFIX, 0, result, 0, xlen);
-        System.arraycopy(messageByte, 0, result, xlen, ylen);
-
-        return Blake2b.Digest.newInstance(param).digest(result);
-    }
-
 
     private byte[] WriteMajorTypeHeaderBuf(byte[] bytes, int c, String value) {
         if (bytes[0] != 0) {

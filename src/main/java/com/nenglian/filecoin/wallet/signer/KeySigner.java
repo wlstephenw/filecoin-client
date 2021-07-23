@@ -2,6 +2,7 @@ package com.nenglian.filecoin.wallet.signer;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
+import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.crypto.SigType;
 import com.nenglian.filecoin.rpc.domain.crypto.Signature;
 import com.nenglian.filecoin.rpc.domain.types.Message;
@@ -16,10 +17,14 @@ import org.web3j.crypto.ECKeyPair;
 
 public class KeySigner implements Signer {
 
-    String privateKey;
+    byte[] privateKey;
     private TransactionSerializer transactionSerializer = new TransactionSerializer();
 
     public KeySigner(String privateKey) {
+        this.privateKey = HexUtil.decodeHex(privateKey);
+    }
+
+    public KeySigner(byte[] privateKey) {
         this.privateKey = privateKey;
     }
 
@@ -28,14 +33,15 @@ public class KeySigner implements Signer {
 
         byte[] cidHash = null;
         try {
-            cidHash = transactionSerializer.transactionSerialize(transaction);
+            transaction.setCid(Cid.of(transactionSerializer.getCid(transaction).toString()));
+            cidHash = transactionSerializer.getCidHash(transaction);
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("transaction entity serialization failed");
         }
 
         //签名
-        ECKeyPair ecKeyPair = ECKeyPair.create(HexUtil.decodeHex(this.privateKey));
+        ECKeyPair ecKeyPair = ECKeyPair.create(this.privateKey);
         org.web3j.crypto.Sign.SignatureData signatureData = org.web3j.crypto.Sign.signMessage(cidHash,
             ecKeyPair, false);
 

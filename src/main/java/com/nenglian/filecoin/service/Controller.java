@@ -87,17 +87,19 @@ public class Controller implements Api {
             .from(transfer.getGasAddress())
             .to(transfer.getFrom())
             .value(gasMessage.getGasFeeCap()).build();
-        Cid gasCid = txm.signAndSend(gasTransfer);
-        order.setGasTxId(gasCid.getStr());
+        SignedMessage sign = txm.sign(gasTransfer, null, null);
+
+        // 先落库
+        order.setGasTxId(sign.getMessage().getCid().getStr());
         order.setGasMessage(gasMessage);
         order.setStatus(TransferStatus.PENDING);
         repository.save(order);
 
-
+        txm.send(sign);
 
         Result<String> res = new Result<>();
         res.setCode(0);
-        res.setData(gasCid.getStr());
+        res.setData(sign.getMessage().getCid().getStr());
         return res;
     }
 
@@ -234,12 +236,14 @@ public class Controller implements Api {
                 return;
             }
 
-            SignedMessage signedMessage = txm.sign(gasOrder.getTransfer(), gasOrder.getGasMessage());
-            Cid cid = txm.send(signedMessage);
-            gasOrder.setTxId(cid.getStr());
+            SignedMessage signedMessage = txm.sign(gasOrder.getTransfer(), gasOrder.getGasMessage(), null);
+            gasOrder.setTxId(signedMessage.getMessage().getCid().getStr());
             repository.save(gasOrder);
 
-            mq.setTransferTxId(cid.getStr());
+            txm.send(signedMessage);
+
+
+            mq.setTransferTxId(signedMessage.getMessage().getCid().getStr());
             rocketMQTemplate.convertAndSend("filecoin", mq);
         } else if (to != null) {
             // 充值交易
