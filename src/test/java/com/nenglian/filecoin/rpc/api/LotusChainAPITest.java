@@ -129,8 +129,8 @@ public class LotusChainAPITest extends AbstractLotusAPITest {
 
     @Test
     public void getMessage() throws IOException {
-        Cid cid = Cid.of("bafy2bzaceb27xv5o5c7lo7egaccszro7m4hzbxemunot2kdgdullh6vh34prs");
-        Cid cid1 = Cid.of("bafy2bzaceceh3g2ihrg7m2xok56do3puvfgmfsohxl4bnb4jt7wwni6ppp4xm");
+        Cid cid = Cid.of("bafy2bzacecoovduvitlpkrjq2q6gbf6hfhe33lyxlhwy4mk4reewb4bhfwuuc");
+        Cid cid1 = Cid.of("bafy2bzacebb4y3tfudsl2n42piibb52hnkwmugkb3rtckdryvjuah6vryqyty");
 
         Response<com.nenglian.filecoin.rpc.domain.types.Message> response = lotusChainAPI.getMessage(cid).execute();
         Response<com.nenglian.filecoin.rpc.domain.types.Message> response1 = lotusChainAPI.getMessage(cid1).execute();

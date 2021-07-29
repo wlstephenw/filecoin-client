@@ -1,7 +1,6 @@
 package com.nenglian.filecoin.service;
 
 import cn.hutool.core.util.HexUtil;
-import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.exitcode.ExitCode;
 import com.nenglian.filecoin.rpc.domain.types.Message;
@@ -18,12 +17,10 @@ import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.service.db.OrderRepository;
 import com.nenglian.filecoin.transaction.TransactionListener;
 import com.nenglian.filecoin.transaction.TransactionManager;
-import com.nenglian.filecoin.transaction.dto.TxEvent;
+import com.nenglian.filecoin.transaction.dto.TxReceipt;
 import com.nenglian.filecoin.wallet.Address;
-import com.nenglian.filecoin.wallet.Convert;
 import com.nenglian.filecoin.wallet.Wallet;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
@@ -54,10 +51,10 @@ public class Controller implements Api {
 
     @Autowired
     TransactionManager txm;
-
     @Autowired
-    private RocketMQTemplate rocketMQTemplate;
-
+    TransferService transferService;
+    @Autowired
+    ReconciliationService reconciliationService;
 
     @Override
     public Result<WalletAddress> createAddress(byte type) {
@@ -70,59 +67,20 @@ public class Controller implements Api {
 
     @Override
     public Result<String> transfer(Transfer transfer) {
-
-        logger.info("receive transfer request:{}", transfer);
-
-        Order orderById = repository.findOrderById(transfer.getReqId());
-        if (orderById != null) {
-            return Result.<String>builder().data(orderById.getTxId()).msg("duplicated order").build();
-        }
-
-        // 首先落库
-        Order order = Order.builder().reqId(transfer.getReqId()).transfer(transfer).status(TransferStatus.PENDING).build();
-        repository.save(order);
-
-        Message gasMessage = txm.estimateGas(transfer);
-        Transfer gasTransfer = Transfer.builder()
-            .from(transfer.getGasAddress())
-            .to(transfer.getFrom())
-            .value(gasMessage.getGasFeeCap()).build();
-        SignedMessage sign = txm.sign(gasTransfer, null, null);
-
-        // 先落库
-        order.setGasTxId(sign.getMessage().getCid().getStr());
-        order.setGasMessage(gasMessage);
-        order.setStatus(TransferStatus.PENDING);
-        repository.save(order);
-
-        txm.send(sign);
-
         Result<String> res = new Result<>();
+        String result = transferService.transfer(transfer);
+        res.setData(result);
         res.setCode(0);
-        res.setData(sign.getMessage().getCid().getStr());
         return res;
     }
 
 
     @Override
     public Result<List<Reconciliation>> reconciliation(Date from, Date to) {
-        try {
-            CompletableFuture<Map<Cid, TxEvent>> future = listener
-                .getMessagesFutureByHeightRange(from, to);
-            Map<Cid, TxEvent> map = future.get();
-            List<Reconciliation> collect = map.entrySet().stream()
-                .map((e) -> Reconciliation.builder()
-                    .txId(e.getKey().getStr())
-                    .from(e.getValue().getMessage().getFrom())
-                    .to(e.getValue().getMessage().getTo())
-                    .value(e.getValue().getMessage().getValue())
-                    .fee(e.getValue().getReceipt().getGasUsed())
-                    .build())
-                .collect(Collectors.toList());
-            return Result.<List<Reconciliation>>builder().code(0).data(collect).build();
-        }catch (Exception e){
-            throw new RuntimeException(e);
-        }
+        return Result.<List<Reconciliation>>builder()
+            .code(0)
+            .data(reconciliationService.reconciliation(from, to))
+            .build();
     }
 
     @Override
@@ -133,7 +91,7 @@ public class Controller implements Api {
 
     @Override
     public Result<String> toAddress(String hexpk) {
-        String address = new Address(HexUtil.decodeHex(hexpk)).toEncodedAddress();
+        String address = new Address(Address.TestnetPrefix, HexUtil.decodeHex(hexpk)).toEncodedAddress();
         return Result.<String>builder().code(0).data(address).build();
     }
 
@@ -149,7 +107,7 @@ public class Controller implements Api {
         }
         BlockInfo blockInfo = BlockInfo.builder()
             .height(head.getHeight())
-            .time(new Date(head.getBlocks().get(0).getTimestamp()))
+            .time(new Date(head.getBlocks().get(0).getTimestamp() * 1000))
             .build();
         return Result.<BlockInfo>builder().data(blockInfo).build();
     }
@@ -163,93 +121,4 @@ public class Controller implements Api {
         return res;
     }
 
-
-    @EventListener
-    public void handleTxEvent(TxEvent txEvent) {
-
-        Account from = wallet.get(txEvent.getMessage().getFrom());
-        Account to = wallet.get(txEvent.getMessage().getTo());
-        if (from == null && to == null) {
-            logger.info("无关交易:{}", txEvent);
-            return;
-        }
-
-        Order order = repository.findOrderByTxId(txEvent.getMessage().getCid().getStr());
-        Order gasOrder = repository.findOrderByGasTxId(txEvent.getMessage().getCid().getStr());
-        if (order != null) {
-            if (!order.getStatus().equals(TransferStatus.GAS_OK)){
-                logger.info("duplicated tx, cid:{}", txEvent.getMessage().getCid());
-                return;
-            }
-
-            logger.info("收到transfer交易结果, cid:{}", txEvent.getMessage().getCid());
-            MQTxMessage mq = MQTxMessage.builder()
-                .reqId(order.getReqId())
-                .chainName("filecoin")
-                .tokenAddress("")
-                .from(txEvent.getMessage().getFrom())
-                .to(txEvent.getMessage().getTo())
-                .value(txEvent.getMessage().getValue())
-                .fee(txEvent.getReceipt().getGasUsed())
-                .blockHeight(txEvent.getBlockHeight())
-                .blockTime(new Date(txEvent.getBlockTime()))
-                .build();
-
-            if (txEvent.getReceipt().getExitCode().equals(ExitCode.Ok)) {
-                order.setStatus(TransferStatus.OK);
-                mq.setStatus((byte)2);
-            } else {
-                order.setStatus(TransferStatus.FAIL);
-                mq.setStatus((byte)3);
-            }
-            repository.save(order);
-            rocketMQTemplate.convertAndSend("filecoin", mq);
-        } else if (gasOrder != null) {
-            if (!gasOrder.getStatus().equals(TransferStatus.PENDING)){
-                logger.info("duplicated tx, cid:{}", txEvent.getMessage().getCid());
-                return;
-            }
-
-            logger.info("收到gas转账交易结果, cid:{}", txEvent.getMessage().getCid());
-            MQTxMessage mq = MQTxMessage.builder()
-                .reqId(gasOrder.getReqId())
-                .chainName("filecoin")
-                .tokenAddress("")
-                .from(txEvent.getMessage().getFrom())
-                .to(txEvent.getMessage().getTo())
-                .value(txEvent.getMessage().getValue())
-                .fee(txEvent.getReceipt().getGasUsed())
-                .blockHeight(txEvent.getBlockHeight())
-                .blockTime(new Date(txEvent.getBlockTime()))
-                .build();
-
-            if (txEvent.getReceipt().getExitCode().equals(ExitCode.Ok)) {
-                gasOrder.setStatus(TransferStatus.GAS_OK);
-                mq.setStatus((byte)2);
-            } else {
-                gasOrder.setStatus(TransferStatus.GAS_FAIL);
-                mq.setStatus((byte)3);
-            }
-            repository.save(gasOrder);
-            if (gasOrder.getStatus().equals(TransferStatus.GAS_FAIL)) {
-                rocketMQTemplate.convertAndSend("filecoin", mq);
-                return;
-            }
-
-            SignedMessage signedMessage = txm.sign(gasOrder.getTransfer(), gasOrder.getGasMessage(), null);
-            gasOrder.setTxId(signedMessage.getMessage().getCid().getStr());
-            repository.save(gasOrder);
-
-            txm.send(signedMessage);
-
-
-            mq.setTransferTxId(signedMessage.getMessage().getCid().getStr());
-            rocketMQTemplate.convertAndSend("filecoin", mq);
-        } else if (to != null) {
-            // 充值交易
-
-        } else {
-            logger.error("没有识别的交易:{}", txEvent);
-        }
-    }
 }

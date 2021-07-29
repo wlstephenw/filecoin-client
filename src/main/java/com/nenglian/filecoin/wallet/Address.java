@@ -18,6 +18,12 @@ import ove.crypto.digest.Blake2b;
 @NoArgsConstructor
 @ToString
 public class Address implements Serializable {
+
+    // MainnetPrefix is the main network prefix.
+    public static final String MainnetPrefix = "f";
+    // TestnetPrefix is the test network prefix.
+    public static final String TestnetPrefix = "t";
+
     private byte type;
     private String network;
     private byte[] bytes;
@@ -27,10 +33,11 @@ public class Address implements Serializable {
      */
     private final static int addressLength = 20;
 
-    public Address(byte[] pub) {
+    public Address(String network, byte[] pub) {
         if(pub.length < 65){
             throw new RuntimeException("Only support 65 bytes public key");
         }
+        this.network = network;
         // TODO use bytes to do all these staff
         Blake2b.Digest digest = Blake2b.Digest.newInstance(20);
         this.type = 1;
@@ -88,7 +95,7 @@ public class Address implements Serializable {
         System.arraycopy(this.getRawBytes(), 0, dest, 0, this.getRawBytes().length);
         System.arraycopy(checksum, 0, dest, this.getRawBytes().length, checksum.length);
 
-        return "f1" + Base32.encode(dest).toLowerCase();
+        return this.network + String.valueOf(this.type) + Base32.encode(dest).toLowerCase();
     }
 
 }

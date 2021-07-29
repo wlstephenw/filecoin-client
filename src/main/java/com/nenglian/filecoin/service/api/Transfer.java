@@ -56,4 +56,6 @@ public class Transfer implements Serializable {
      * false - value = 实际转账金额
      */
     private Boolean feeInclusive;
+
+    Float speedup;
 }

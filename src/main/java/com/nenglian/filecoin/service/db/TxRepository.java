@@ -1,6 +1,6 @@
 package com.nenglian.filecoin.service.db;
 
-import com.nenglian.filecoin.rpc.domain.types.Message;
+import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 /**
@@ -8,7 +8,11 @@ import org.springframework.data.mongodb.repository.MongoRepository;
  * @since 2021/7/15 下午3:42
  */
 
-public interface TxRepository extends MongoRepository<Message, String> {
+public interface TxRepository extends MongoRepository<Tx, String> {
 
-     Message findMessageByCid_Str(String cid);
+     Tx findTxByCid(String cid);
+
+     List<Tx> findFirstByOrderByBlockHeightDesc();
+
+     List<Tx> findTxesByBlockTimeIsBetween(Long from, Long to);
 }

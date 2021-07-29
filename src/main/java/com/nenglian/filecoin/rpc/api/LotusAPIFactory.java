@@ -65,8 +65,12 @@ public class LotusAPIFactory {
     }
 
     public static LotusAPIFactory create() {
-        String API_ROUTER = "http://localhost:7777/rpc/v1";
-        String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
+//        String API_ROUTER = "http://localhost:7777/rpc/v0";
+//        String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIl19.fNgcqyigMfozXVmBK13lhzPqDrjE3TwRDvcrwx9ReM0";
+
+        final String API_ROUTER = "http://192.168.1.71:12345/rpc/v0";
+        final String AUTHORIZATION = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJyZWFkIiwid3JpdGUiLCJzaWduIiwiYWRtaW4iXX0.dUnQ95Y4JFdSrB5yqzN9BAMLpBtDutZVc4gFmSd39Hk";
+
         return new LotusAPIFactory.Builder()
             .apiGateway(API_ROUTER)
             .authorization(AUTHORIZATION)

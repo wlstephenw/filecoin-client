@@ -1,8 +1,7 @@
 package com.nenglian.filecoin.transaction;
 
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
-import com.nenglian.filecoin.rpc.domain.types.Message;
-import com.nenglian.filecoin.transaction.dto.TxEvent;
+import com.nenglian.filecoin.transaction.dto.TxReceipt;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -53,11 +52,21 @@ public class TransactionListenerTest {
         System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(to));
 
 
-        CompletableFuture<Map<Cid, TxEvent>> future = listener
+        CompletableFuture<Map<Cid, TxReceipt>> future = listener
             .getMessagesFutureByHeightRange(from, to);
 
-        Map<Cid, TxEvent> map = future.get();
+        Map<Cid, TxReceipt> map = future.get();
 
         Assert.assertNotNull(map);
+    }
+
+    @Test
+    public void getMessagesFutureByHeight() throws ExecutionException, InterruptedException {
+        long height = 110749L;
+        CompletableFuture<Map<Cid, TxReceipt>> messagesFutureByHeight = listener.getMessagesFutureByHeight(height - 1);
+        Map<Cid, TxReceipt> cidTxReceiptMap = messagesFutureByHeight.get();
+        cidTxReceiptMap.forEach((id, receipt) -> {
+            System.out.println(id);
+        });
     }
 }

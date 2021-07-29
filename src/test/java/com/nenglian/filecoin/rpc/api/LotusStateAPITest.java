@@ -38,12 +38,9 @@ public class LotusStateAPITest extends AbstractLotusAPITest {
 
     @Test
     public void replay() throws IOException {
-        TipSetKey tsk = TipSetKey.of("bafy2bzacebine7gvzfm4kejk6qoolspcrnqpoanwqjcj5qlhgp3japt74q2sc"
-                , "bafy2bzacebfmegqd4yvqzxfbuxs7fbuuwklf5qmierzyhr3mhmlxmxhphk5du"
-                , "bafy2bzacebhevfzjiqo4mj2ls22e6orcmw3hmeysqizutuhi6q3gxn2cizvxw"
-                , "bafy2bzaceb2hgjqsdj5nbpfngjq6g7lcjhdoydx56rlodjwfcflvx3qxdfyce");
+        TipSetKey tsk = null;
         Response<InvocResult> response = lotusStateAPI.replay(
-                tsk, Cid.of("bafy2bzacedpeiqbrzuozu3l2x32unf656wye7vrz2umaeedeux223v7fpf7b4")).execute();
+                tsk, Cid.of("bafy2bzacebz4libov5dhyuatawqafjnhduo2u3mvzot2j36aj53q2zplmyhqm")).execute();
         Assert.assertNotNull(response.getResult());
     }
 
@@ -208,17 +205,16 @@ public class LotusStateAPITest extends AbstractLotusAPITest {
     }
 
     @Test
-    public void getReceipt() throws IOException {
+    public void testMsgLookup() throws IOException {
 
-        Cid cid = Cid.of("bafy2bzacecvgtojtomcr3iwns5jyzdkmhehpnk3kpibc54ydql3ahjfdf5t22");
-//        Cid cid = Cid.of("bafy2bzaceavrrdghgjnvffme3usmx7qbdrnojiqje4b5orw5nyeionxm346iu");
+//        Cid cid = Cid.of("bafy2bzacecoovduvitlpkrjq2q6gbf6hfhe33lyxlhwy4mk4reewb4bhfwuuc");
+        Cid cid = Cid.of("bafy2bzacebz4libov5dhyuatawqafjnhduo2u3mvzot2j36aj53q2zplmyhqm");
 
         MessageReceipt receipt = lotusStateAPI
             .getReceipt(cid).execute().getResult();
 
         MsgLookup msgLookup = lotusStateAPI
             .searchMsg(cid).execute().getResult();
-        MessageReceipt receipt1 = msgLookup.getReceipt();
-        Assert.assertNotNull(receipt1);
+        Assert.assertNotNull(msgLookup);
     }
 }

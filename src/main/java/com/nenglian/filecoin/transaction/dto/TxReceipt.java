@@ -1,5 +1,7 @@
 package com.nenglian.filecoin.transaction.dto;
 
+import com.nenglian.filecoin.rpc.domain.InvocResult;
+import com.nenglian.filecoin.rpc.domain.MsgGasCost;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
 import java.util.Date;
@@ -15,9 +17,10 @@ import lombok.ToString;
 @Data
 @Builder
 @ToString
-public class TxEvent {
+public class TxReceipt {
     Message message;
     MessageReceipt receipt;
+    InvocResult invocResult;
     Long blockHeight;
     Long blockTime;
 }

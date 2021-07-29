@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
 import com.nenglian.filecoin.rpc.api.LotusGasAPI;
 import com.nenglian.filecoin.rpc.domain.MessageSendSpec;
+import com.nenglian.filecoin.rpc.domain.MsgLookup;
 import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
@@ -16,6 +17,7 @@ import com.nenglian.filecoin.wallet.Wallet;
 import com.nenglian.filecoin.wallet.signer.Signer;
 import java.io.IOException;
 import java.math.BigInteger;
+import jnr.ffi.annotations.In;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,30 +35,17 @@ public class TransactionManager {
     private static final Logger logger = LoggerFactory.getLogger(TransactionManager.class);
 
     Wallet wallet;
+    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
+    private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
+    ReceiptProcessor receiptProcessor = new ReceiptProcessor(lotusAPIFactory, 1000, 1000);
+
 
     public TransactionManager(Wallet wallet) {
         this.wallet = wallet;
     }
 
-    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
-    private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
 
-    private Message getGas(Message message){
-        MessageSendSpec messageSendSpec = null;
-        TipSetKey tsk = null;
-        try {
-            Response<Message> response = lotusGasAPI.estimateMessageGas(message, messageSendSpec, tsk).execute();
-            Message result = response.getResult();
-            return Message.builder()
-                .gasFeeCap(result.getGasFeeCap())
-                .gasLimit(result.getGasLimit())
-                .gasPremium(result.getGasPremium()).build();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
-        return null;
-    }
 
     public long getNonce(String address){
         Response<Long> response = null;
@@ -68,10 +57,18 @@ public class TransactionManager {
         return response.getResult();
     }
 
+
+
     public Message estimateGas(Transfer tx){
-        return getGas(Message.builder().from(tx.getFrom())
+
+        Message gas = getGas(Message.builder().from(tx.getFrom())
             .to(tx.getTo())
             .value(tx.getValue()).build());
+        if (tx.getSpeedup() != null) {
+            return this.txSpeedup(gas, tx.getSpeedup());
+        }else {
+            return gas;
+        }
     }
 
 
@@ -89,7 +86,7 @@ public class TransactionManager {
         return this.sign(transaction, signer);
     }
 
-    private Message buildMessage(Transfer tx, Message gas) {
+    Message buildMessage(Transfer tx, Message gas) {
         //获取nonce
         long nonce = getNonce(tx.getFrom());
         //拼装交易参数
@@ -98,7 +95,7 @@ public class TransactionManager {
             .from(tx.getFrom())
             .to(tx.getTo())
             .gasFeeCap(gas.getGasFeeCap())
-            .gasLimit(gas.getGasLimit() * 2)
+            .gasLimit(gas.getGasLimit())
             .gasPremium(gas.getGasPremium())
             .method(0L)
             .nonce(nonce)
@@ -124,15 +121,6 @@ public class TransactionManager {
         return signer.sign(transaction);
     }
 
-    public Message getMessage(Cid cid){
-        try {
-            return lotusAPIFactory.createLotusChainAPI().getMessage(cid).execute().getResult();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public Cid send(SignedMessage signedMessage){
         // TODO send to network
         try {
@@ -142,29 +130,38 @@ public class TransactionManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return signedMessage.getMessage().getCid();
     }
 
-    private Cid getTxId(Message transaction){
-        byte[] cidHash = getcidHash(transaction);
-        logger.info("cid Hash is: {}", HexUtil.encodeHexStr(cidHash));
-        return Cid.of(Base32.encode(cidHash));
+    public MsgLookup sendAndWait(SignedMessage signedMessage){
+        Cid cid = this.send(signedMessage);
+        return receiptProcessor.waitForTransactionReceipt(signedMessage.getMessage().getCid().getStr());
     }
 
-    private byte[] getcidHash(Message transaction){
-        TransactionSerializer transactionSerializer = new TransactionSerializer();
-        byte[] cidHash = null;
+    public Message txSpeedup(Message gasEstimation, Float speedup){
+        BigInteger speedupPremium = gasEstimation.getGasPremium().multiply(new BigInteger(String.valueOf(speedup.intValue())));
+        BigInteger speedupFeeCap = speedupPremium.add(gasEstimation.getGasFeeCap().subtract(gasEstimation.getGasPremium()));
+        gasEstimation.setGasPremium(speedupPremium);
+        gasEstimation.setGasFeeCap(speedupFeeCap);
+
+        return gasEstimation;
+    }
+
+    private Message getGas(Message message){
+        MessageSendSpec messageSendSpec = null;
+        TipSetKey tsk = null;
         try {
-            cidHash = transactionSerializer.getCidHash(transaction);
-        } catch (Exception e) {
+            message.setGasLimit(500000L);
+            Response<Message> response = lotusGasAPI.estimateMessageGas(message, messageSendSpec, tsk).execute();
+            Message result = response.getResult();
+            return Message.builder()
+                .gasFeeCap(result.getGasFeeCap())
+                .gasLimit(result.getGasLimit())
+                .gasPremium(result.getGasPremium()).build();
+        } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException("transaction entity serialization failed");
         }
-        return cidHash;
+        return null;
     }
-
-
-
 
 }

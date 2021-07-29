@@ -18,9 +18,18 @@ public class LotusWalletAPITest extends AbstractLotusAPITest {
     private final LotusWalletAPI lotusWalletAPI = lotusAPIFactory.createLotusWalletAPI();
 
     @Test
-    public void balance() throws IOException {
+    public void balanceOfDefault() throws IOException {
         Response<String> defaultAddress = lotusWalletAPI.defaultAddress().execute();
+        System.out.println("default address is:" + defaultAddress.getResult());
         Response<BigInteger> response = lotusWalletAPI.balance(defaultAddress.getResult()).execute();
+        System.out.println("default address's balance is:" + response.getResult());
+        Assert.assertNotNull(response.getResult());
+    }
+
+    @Test
+    public void balance() throws IOException {
+        Response<BigInteger> response = lotusWalletAPI.balance("f1f6giluhaka4myeah5hq4w4e6vt64pzwa74lsrsi").execute();
+        System.out.println("balance is:" + response.getResult());
         Assert.assertNotNull(response.getResult());
     }
 

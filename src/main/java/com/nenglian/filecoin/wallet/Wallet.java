@@ -2,13 +2,11 @@ package com.nenglian.filecoin.wallet;
 
 import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.HexUtil;
-import com.nenglian.filecoin.service.Controller;
 import com.nenglian.filecoin.service.api.WalletAddress;
 import com.nenglian.filecoin.service.db.Account;
 import com.nenglian.filecoin.service.db.AccountRepository;
 import com.nenglian.filecoin.rpc.api.LotusAPIFactory;
-import com.nenglian.filecoin.rpc.api.LotusChainAPI;
-import com.nenglian.filecoin.transaction.dto.TxEvent;
+import com.nenglian.filecoin.transaction.dto.TxReceipt;
 import com.nenglian.filecoin.wallet.signer.KeySigner;
 import com.nenglian.filecoin.wallet.signer.NodeSigner;
 import com.nenglian.filecoin.wallet.signer.Signer;
@@ -19,10 +17,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.HashMap;
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.bouncycastle.math.ec.ECPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +52,7 @@ public class Wallet {
             ECKeyPair ecKeyPair = Keys.createEcKeyPair();
             ECPoint ecPoint = Sign.publicPointFromPrivate(ecKeyPair.getPrivateKey());
             byte[] pub = ecPoint.getEncoded(false);
-            String address = new Address(pub).toEncodedAddress();
+            String address = new Address(Address.TestnetPrefix, pub).toEncodedAddress();
             WalletAddress addr = WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
             db.put(addr.getAddress(), HexUtil.encodeHexStr(ecKeyPair.getPrivateKey().toByteArray()));
 
@@ -97,7 +91,7 @@ public class Wallet {
 
     public WalletAddress getWalletAddresFromSk(byte[] priv){
         byte[] pub = Sign.publicPointFromPrivate(Numeric.toBigInt(priv)).getEncoded(false);
-        String address = new Address(pub).toEncodedAddress();
+        String address = new Address(Address.TestnetPrefix, pub).toEncodedAddress();
         return WalletAddress.builder().address(address).pubKey(HexUtil.encodeHexStr(pub)).build();
     }
 
@@ -122,7 +116,7 @@ public class Wallet {
         if (account != null)
             return new KeySigner(account.getSk());
         else
-            return new NodeSigner();
+            return new NodeSigner(this.lotusAPIFactory);
     }
 
     public List<WalletAddress> list(){
@@ -139,7 +133,7 @@ public class Wallet {
 
 
     @EventListener
-    public void handleTxEvent(TxEvent txEvent) {
+    public void handleTxEvent(TxReceipt txReceipt) {
 //        Account from = repository.findAccountByAddress(txEvent.getMessage().getFrom());
 //        if (from != null){
 //            from.setBalance(from.getBalance().subtract(txEvent.getMessage().getValue()));
@@ -156,6 +150,15 @@ public class Wallet {
 
     public Account get(String address){
         return repository.findAccountByAddress(address);
+    }
+
+    public boolean isOurs(TxReceipt txReceipt){
+        Account from = this.get(txReceipt.getMessage().getFrom());
+        Account to = this.get(txReceipt.getMessage().getTo());
+        if (from == null && to == null) {
+            return false;
+        }
+        return true;
     }
 
 

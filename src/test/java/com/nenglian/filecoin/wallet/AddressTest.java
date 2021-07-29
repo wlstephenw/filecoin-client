@@ -26,7 +26,7 @@ public class AddressTest extends AbstractLotusAPITest {
         // 必须要使用65位的公钥
         ECPoint ecPoint = Sign.publicPointFromPrivate(Numeric.toBigInt(bytes));
         byte[] pub = ecPoint.getEncoded(false);
-        String localAddress = new Address(pub).toEncodedAddress();
+        String localAddress = new Address(Address.TestnetPrefix, pub).toEncodedAddress();
 
         String lotusAddress = "f1ksu3ktw4xhyaoltwr546b3epfs5wxxqfyyxipwi";
         Assert.assertEquals(localAddress, lotusAddress);
@@ -37,7 +37,7 @@ public class AddressTest extends AbstractLotusAPITest {
         String base64 = "YerlVcyqONmWWKE6bVAtQSgzogN4Vs9tq9/GhYxhsIk=";
         byte[] priv = Base64.decode(base64);
         byte[] pub = Sign.publicPointFromPrivate(Numeric.toBigInt(priv)).getEncoded(false);
-        String localAddress = new Address(pub).toEncodedAddress();
+        String localAddress = new Address(Address.TestnetPrefix, pub).toEncodedAddress();
 
         String lotusAddress = "f1f6giluhaka4myeah5hq4w4e6vt64pzwa74lsrsi";
         Assert.assertEquals(localAddress, lotusAddress);

@@ -14,8 +14,11 @@ import java.io.IOException;
  */
 
 public class NodeSigner implements Signer {
-    protected LotusAPIFactory lotusAPIFactory = LotusAPIFactory.create();
-    private final LotusGasAPI lotusGasAPI = lotusAPIFactory.createLotusGasAPI();
+    protected LotusAPIFactory lotusAPIFactory;
+
+    public NodeSigner(LotusAPIFactory lotusAPIFactory) {
+        this.lotusAPIFactory = lotusAPIFactory;
+    }
 
     @Override
     public SignedMessage sign(Message message) {
