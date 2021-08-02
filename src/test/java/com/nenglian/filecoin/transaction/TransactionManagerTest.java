@@ -155,7 +155,7 @@ class TransactionManagerTest {
             .build();
 
         Message gasMessage = txManager.estimateGas(transfer);
-        gasMessage = txManager.txSpeedup(gasMessage, 1);
+        gasMessage = txManager.txSpeedup(gasMessage, 1.0f);
         BigInteger before = lotusWalletAPI.balance(from).execute().getResult();
 
         SignedMessage signedMessage = txManager.sign(transfer, gasMessage, new NodeSigner(lotusAPIFactory));

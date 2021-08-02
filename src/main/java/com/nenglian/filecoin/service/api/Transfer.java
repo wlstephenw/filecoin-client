@@ -25,11 +25,6 @@ public class Transfer implements Serializable {
     String tokenAddress;
 
     /**
-     * GAS资产账户地址
-     */
-    String gasAddress;
-
-    /**
      * 付款方地址
      */
     private String from;
@@ -47,15 +42,7 @@ public class Transfer implements Serializable {
     /**
      * Gas加速因子
      */
-    private BigDecimal gasSpeedUp;
+    private Float speedUp;
 
-    /**
-     * 手续费是否包含在value内（仅对本币交易有意义）
-     * <p>
-     * true - value = 实际转账金额 + 手续费
-     * false - value = 实际转账金额
-     */
-    private Boolean feeInclusive;
-
-    Float speedup;
+    String gasData;
 }

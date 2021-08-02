@@ -62,7 +62,7 @@ public class TransactionListenerTest {
 
     @Test
     public void getMessagesFutureByHeight() throws ExecutionException, InterruptedException {
-        long height = 110749L;
+        long height = 127152L;
         CompletableFuture<Map<Cid, TxReceipt>> messagesFutureByHeight = listener.getMessagesFutureByHeight(height - 1);
         Map<Cid, TxReceipt> cidTxReceiptMap = messagesFutureByHeight.get();
         cidTxReceiptMap.forEach((id, receipt) -> {

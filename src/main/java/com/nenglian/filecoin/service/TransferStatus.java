@@ -8,7 +8,5 @@ package com.nenglian.filecoin.service;
 public enum TransferStatus {
     PENDING,
     OK,
-    FAIL,
-    GAS_OK,
-    GAS_FAIL
+    FAIL
 }

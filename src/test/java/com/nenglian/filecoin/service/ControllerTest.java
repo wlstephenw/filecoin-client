@@ -38,7 +38,6 @@ public class ControllerTest {
             .from("f1f6giluhaka4myeah5hq4w4e6vt64pzwa74lsrsi")
             .to("f1oguiqe7dry7orwvriipthlwo57ojbr4tbxrexvq")
             .value(BigInteger.ONE)
-            .gasAddress("f3upax7iznvckntkata6srcggnysr4vfltmh7aurxyhxmpahqpaxa6sjzy3uziyefjkb44lsozdp2snokloxqq")
             .build();
 
         System.out.println("head is: " + listener.headHeight());

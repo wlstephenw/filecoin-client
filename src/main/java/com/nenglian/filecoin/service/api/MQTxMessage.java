@@ -26,11 +26,6 @@ public class MQTxMessage {
     BigInteger fee;
     Long blockHeight;
     Date blockTime;
-    Byte type;
     Byte status;
-    /**
-     * 转账交易的ID，仅Gas充值交易成功且紧接着的实际转账交易发送成功时不为空
-     */
-    String transferTxId;
     String errorMsg;
 }

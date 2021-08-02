@@ -1,37 +1,25 @@
 package com.nenglian.filecoin.service;
 
 import cn.hutool.core.util.HexUtil;
-import com.nenglian.filecoin.rpc.domain.cid.Cid;
-import com.nenglian.filecoin.rpc.domain.exitcode.ExitCode;
-import com.nenglian.filecoin.rpc.domain.types.Message;
-import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSet;
 import com.nenglian.filecoin.service.api.BlockInfo;
-import com.nenglian.filecoin.service.api.MQTxMessage;
+import com.nenglian.filecoin.service.api.EstimatedGas;
 import com.nenglian.filecoin.service.api.Reconciliation;
 import com.nenglian.filecoin.service.api.Result;
 import com.nenglian.filecoin.service.api.Transfer;
 import com.nenglian.filecoin.service.api.WalletAddress;
-import com.nenglian.filecoin.service.db.Account;
-import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.service.db.OrderRepository;
 import com.nenglian.filecoin.transaction.TransactionListener;
 import com.nenglian.filecoin.transaction.TransactionManager;
-import com.nenglian.filecoin.transaction.dto.TxReceipt;
 import com.nenglian.filecoin.wallet.Address;
 import com.nenglian.filecoin.wallet.Wallet;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -66,7 +54,19 @@ public class Controller implements Api {
     }
 
     @Override
+    public Result<EstimatedGas> estimateGas(Transfer transfer) {
+
+        // TODO check the input parameters
+
+        return Result.<EstimatedGas>builder()
+            .data(transferService.estimateGas(transfer))
+            .build();
+    }
+
+
+    @Override
     public Result<String> transfer(Transfer transfer) {
+        // TODO check the input parameters
         Result<String> res = new Result<>();
         String result = transferService.transfer(transfer);
         res.setData(result);
@@ -89,16 +89,10 @@ public class Controller implements Api {
         return Result.builder().code(0).build();
     }
 
-    @Override
-    public Result<String> toAddress(String hexpk) {
-        String address = new Address(Address.TestnetPrefix, HexUtil.decodeHex(hexpk)).toEncodedAddress();
-        return Result.<String>builder().code(0).data(address).build();
-    }
 
 
     @Override
     public Result<BlockInfo> latestBlock() {
-//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         TipSet head = null;
         try {
             head = listener.head();

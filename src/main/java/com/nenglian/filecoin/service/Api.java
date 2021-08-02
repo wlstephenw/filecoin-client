@@ -1,6 +1,7 @@
 package com.nenglian.filecoin.service;
 
 import com.nenglian.filecoin.service.api.BlockInfo;
+import com.nenglian.filecoin.service.api.EstimatedGas;
 import com.nenglian.filecoin.service.api.Reconciliation;
 import com.nenglian.filecoin.service.api.Result;
 import com.nenglian.filecoin.service.api.Transfer;
@@ -33,6 +34,16 @@ public interface Api {
     @PostMapping("address")
     Result<WalletAddress> createAddress(@RequestParam byte type);
 
+
+    /**
+     * estimate gas
+     *
+     * @param transfer
+     * @return
+     */
+    @PostMapping("estimate")
+    Result<EstimatedGas> estimateGas(@RequestBody Transfer transfer);
+
     /**
      * perform transfer transaction
      *
@@ -41,6 +52,8 @@ public interface Api {
      */
     @PostMapping("transfer")
     Result<String> transfer(@RequestBody Transfer transfer);
+
+
 
     /**
      * get transactions from chain at the given time range
@@ -81,13 +94,5 @@ public interface Api {
     @GetMapping("balance")
     Result<BigInteger> balance(@RequestParam String address, @RequestParam String tokenAddress);
 
-    /**
-     * derive address from hexadecimal public key
-     *
-     * @param hexPk
-     * @return
-     */
-    @GetMapping("deriveAddress")
-    Result<String> toAddress(@RequestParam String hexPk);
 
 }

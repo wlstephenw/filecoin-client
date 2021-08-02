@@ -21,11 +21,9 @@ import org.springframework.data.annotation.Id;
 @NoArgsConstructor
 public class Order {
     @Id
-    String id;
     String reqId;
     Transfer transfer;
     Message gasMessage;
     TransferStatus status;
     String txId;
-    String gasTxId;
 }

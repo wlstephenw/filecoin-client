@@ -11,6 +11,7 @@ import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
 import com.nenglian.filecoin.rpc.domain.types.TipSetKey;
+import com.nenglian.filecoin.rpc.jasonrpc.JsonRpcException;
 import com.nenglian.filecoin.rpc.jasonrpc.Response;
 import com.nenglian.filecoin.service.api.Transfer;
 import com.nenglian.filecoin.wallet.Wallet;
@@ -58,19 +59,33 @@ public class TransactionManager {
     }
 
 
-
     public Message estimateGas(Transfer tx){
 
-        Message gas = getGas(Message.builder().from(tx.getFrom())
+        Message gas = null;
+        Message message = Message.builder()
+            .from(tx.getFrom())
             .to(tx.getTo())
-            .value(tx.getValue()).build());
-        if (tx.getSpeedup() != null) {
-            return this.txSpeedup(gas, tx.getSpeedup());
-        }else {
-            return gas;
+            .value(tx.getValue()).build();
+        try {
+            gas = getGas(message);
+        } catch (JsonRpcException e){
+            logger.warn("", e);
+            throw new RuntimeException(e);
         }
-    }
+        catch (Exception e) {
+            logger.error("", e);
+            throw new RuntimeException(e);
+        }
 
+        if (tx.getSpeedUp() != null) {
+            if (tx.getSpeedUp() <= 0.0 || tx.getSpeedUp() > 5.0){
+                throw new RuntimeException(String.format("only support 0 < speedup <= 5, speedup: %f", tx.getSpeedUp()));
+            }
+             gas = this.txSpeedup(gas, tx.getSpeedUp());
+        }
+
+        return gas;
+    }
 
     public SignedMessage sign(Transfer tx, Message gas, Signer signer){
         if (tx == null || StrUtil.isBlank(tx.getFrom())
@@ -128,9 +143,8 @@ public class TransactionManager {
             Cid cid = lotusAPIFactory.createLotusMPoolAPI().push(signedMessage).execute().getResult();
             return cid;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return signedMessage.getMessage().getCid();
     }
 
     public MsgLookup sendAndWait(SignedMessage signedMessage){
@@ -147,21 +161,17 @@ public class TransactionManager {
         return gasEstimation;
     }
 
-    private Message getGas(Message message){
+    private Message getGas(Message message) throws IOException {
         MessageSendSpec messageSendSpec = null;
         TipSetKey tsk = null;
-        try {
-            message.setGasLimit(500000L);
-            Response<Message> response = lotusGasAPI.estimateMessageGas(message, messageSendSpec, tsk).execute();
-            Message result = response.getResult();
-            return Message.builder()
-                .gasFeeCap(result.getGasFeeCap())
-                .gasLimit(result.getGasLimit())
-                .gasPremium(result.getGasPremium()).build();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+        Response<Message> response = lotusGasAPI.estimateMessageGas(message, messageSendSpec, tsk).execute();
+        Message result = response.getResult();
+        return Message.builder()
+            .gasFeeCap(result.getGasFeeCap())
+            .gasLimit(result.getGasLimit())
+            .gasPremium(result.getGasPremium()).build();
+
+
     }
 
 }
