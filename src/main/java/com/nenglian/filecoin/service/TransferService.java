@@ -112,31 +112,35 @@ public class TransferService {
         Order order = repository.findOrderByTxId(txReceipt.getMessage().getCid().getStr());
 
         if (order != null) {
-            handleTransferResult(txReceipt, order);
+            handleOrderResult(txReceipt, order);
         }else {
             // 充值等交易
-            MQTxMessage mq = MQTxMessage.builder()
-                .reqId(null)
-                .chainName("filecoin")
-                .tokenAddress("")
-                .from(txReceipt.getMessage().getFrom())
-                .to(txReceipt.getMessage().getTo())
-                .value(txReceipt.getMessage().getValue())
-                .fee(txReceipt.getInvocResult().getGasCost().getTotalCost())
-                .blockHeight(txReceipt.getBlockHeight())
-                .blockTime(new Date(txReceipt.getBlockTime()))
-                .build();
-
-            if (txReceipt.getReceipt().getExitCode().equals(ExitCode.Ok)) {
-                mq.setStatus((byte)2);
-            } else {
-                mq.setStatus((byte)3);
-            }
-            rocketMQTemplate.convertAndSend("filecoin", mq);
+            handleTransferResult(txReceipt);
         }
     }
 
-    private void handleTransferResult(TxReceipt txReceipt, Order order) {
+    private void handleTransferResult(TxReceipt txReceipt){
+        MQTxMessage mq = MQTxMessage.builder()
+            .reqId(null)
+            .chainName("filecoin")
+            .tokenAddress("")
+            .from(txReceipt.getMessage().getFrom())
+            .to(txReceipt.getMessage().getTo())
+            .value(txReceipt.getMessage().getValue())
+            .fee(txReceipt.getInvocResult().getGasCost().getTotalCost())
+            .blockHeight(txReceipt.getBlockHeight())
+            .blockTime(new Date(txReceipt.getBlockTime()))
+            .build();
+
+        if (txReceipt.getReceipt().getExitCode().equals(ExitCode.Ok)) {
+            mq.setStatus((byte)2);
+        } else {
+            mq.setStatus((byte)3);
+        }
+        rocketMQTemplate.convertAndSend("filecoin", mq);
+    }
+
+    private void handleOrderResult(TxReceipt txReceipt, Order order) {
         if (!order.getStatus().equals(TransferStatus.PENDING)){
             logger.warn("duplicated tx, cid:{}", txReceipt.getMessage().getCid());
             return;
