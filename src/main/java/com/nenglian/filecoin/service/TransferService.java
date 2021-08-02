@@ -1,6 +1,7 @@
 package com.nenglian.filecoin.service;
 
 import com.alibaba.fastjson.JSON;
+import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.exitcode.ExitCode;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.SignedMessage;
@@ -11,6 +12,7 @@ import com.nenglian.filecoin.service.db.Order;
 import com.nenglian.filecoin.service.db.OrderRepository;
 import com.nenglian.filecoin.transaction.TransactionListener;
 import com.nenglian.filecoin.transaction.TransactionManager;
+import com.nenglian.filecoin.transaction.TransactionSerializer;
 import com.nenglian.filecoin.transaction.dto.TxReceipt;
 import com.nenglian.filecoin.wallet.Wallet;
 import java.math.BigInteger;
@@ -92,11 +94,11 @@ public class TransferService {
             .reqId(transfer.getReqId())
             .transfer(transfer)
             .status(TransferStatus.PENDING)
-            .txId(signedMessage.getMessage().getCid().getStr())
+            .txId(new TransactionSerializer().getCid(signedMessage).toString())
             .build();
         repository.save(order);
 
-        txm.send(signedMessage);
+        Cid cid = txm.send(signedMessage);
         return order.getTxId();
     }
 
@@ -109,7 +111,7 @@ public class TransferService {
     public void handleTxEvent(TxReceipt txReceipt) {
         if (!wallet.isOurs(txReceipt))
             return;
-        Order order = repository.findOrderByTxId(txReceipt.getMessage().getCid().getStr());
+        Order order = repository.findOrderByTxId(txReceipt.getCid().getStr());
 
         if (order != null) {
             handleOrderResult(txReceipt, order);
@@ -122,6 +124,7 @@ public class TransferService {
     private void handleTransferResult(TxReceipt txReceipt){
         MQTxMessage mq = MQTxMessage.builder()
             .reqId(null)
+            .txId(txReceipt.getCid().getStr())
             .chainName("filecoin")
             .tokenAddress("")
             .from(txReceipt.getMessage().getFrom())
@@ -149,6 +152,7 @@ public class TransferService {
         logger.info("收到transfer交易结果, cid:{}", txReceipt.getMessage().getCid());
         MQTxMessage mq = MQTxMessage.builder()
             .reqId(order.getReqId())
+            .txId(txReceipt.getCid().getStr())
             .chainName("filecoin")
             .tokenAddress("")
             .from(txReceipt.getMessage().getFrom())

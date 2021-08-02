@@ -88,9 +88,14 @@ public class TransactionListener {
             Map<Cid, TxReceipt> cidTxReceiptMap = future.get();
             logger.info("scanned block: {}, total messages:{}", height, cidTxReceiptMap.size() );
             cidTxReceiptMap.forEach((cid, ev) -> {
-                logger.info("高度:{}, 时间:{}, cid: {}, 交易结果:{},交易内容:{}", ev.getBlockHeight(), new Date(ev.getBlockTime() * 1000), ev.getMessage().getCid(),
+                logger.info("高度:{}, 时间:{}, cid:{}, message cid: {}, 交易结果:{},交易内容:{}",
+                    ev.getBlockHeight(),
+                    new Date(ev.getBlockTime() * 1000),
+                    cid,
+                    ev.getMessage().getCid(),
                     ev.getReceipt(), ev.getMessage());
                 try {
+                    ev.setCid(cid);
                     applicationEventPublisher.publishEvent(ev);
                 } catch (Exception e) {
                     logger.error("error:", e);
@@ -236,7 +241,7 @@ public class TransactionListener {
                         InvocResult replay = replay(signedMessages.get(i).getCid());
                         builder.add(
                             new Pair<>(
-                            signedMessages.get(i).getCid(),
+                                cids.get(blsMessages.size() + i),
                             TxReceipt.builder()
                                 .message(signedMessages.get(i))
                                 .receipt(replay.getMsgRct())

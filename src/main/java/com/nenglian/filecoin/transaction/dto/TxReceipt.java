@@ -2,6 +2,7 @@ package com.nenglian.filecoin.transaction.dto;
 
 import com.nenglian.filecoin.rpc.domain.InvocResult;
 import com.nenglian.filecoin.rpc.domain.MsgGasCost;
+import com.nenglian.filecoin.rpc.domain.cid.Cid;
 import com.nenglian.filecoin.rpc.domain.types.Message;
 import com.nenglian.filecoin.rpc.domain.types.MessageReceipt;
 import java.util.Date;
@@ -18,6 +19,7 @@ import lombok.ToString;
 @Builder
 @ToString
 public class TxReceipt {
+    Cid cid;
     Message message;
     MessageReceipt receipt;
     InvocResult invocResult;

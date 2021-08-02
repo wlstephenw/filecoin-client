@@ -139,8 +139,9 @@ public class TransactionManager {
     public Cid send(SignedMessage signedMessage){
         // TODO send to network
         try {
-            logger.info("sending tx, cid: {},  tx: {}", signedMessage.getMessage().getCid(), signedMessage);
+
             Cid cid = lotusAPIFactory.createLotusMPoolAPI().push(signedMessage).execute().getResult();
+            logger.info("sent tx, cid:{}, message cid: {},  tx: {}", cid, signedMessage.getMessage().getCid(), signedMessage);
             return cid;
         } catch (IOException e) {
             throw new RuntimeException(e);

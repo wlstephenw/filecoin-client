@@ -29,12 +29,12 @@ public class TransactionSaver {
         if (!wallet.isOurs(txReceipt))
             return;
 
-        Tx tx = repository.findTxByCid(txReceipt.getMessage().getCid().getStr());
+        Tx tx = repository.findTxByCid(txReceipt.getCid().getStr());
         if (null != tx)
             return;
 
         tx = new Tx();
-        tx.setCid(txReceipt.getMessage().getCid().getStr());
+        tx.setCid(txReceipt.getCid().getStr());
         BeanUtils.copyProperties(txReceipt.getMessage(), tx);
         BeanUtils.copyProperties(txReceipt.getReceipt(), tx);
         BeanUtils.copyProperties(txReceipt.getInvocResult().getGasCost(), tx);

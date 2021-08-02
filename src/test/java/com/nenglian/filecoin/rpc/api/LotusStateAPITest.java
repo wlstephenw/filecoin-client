@@ -40,13 +40,13 @@ public class LotusStateAPITest extends AbstractLotusAPITest {
     public void replay() throws IOException {
         TipSetKey tsk = null;
         Response<InvocResult> response = lotusStateAPI.replay(
-                tsk, Cid.of("bafy2bzaceav5elsllyongungjmnxpty7oxxw7ktwxdk3sly4sqsbf7zwqpejc")).execute();
+                tsk, Cid.of("bafy2bzaceafrtfqvlwnisyjyergqjozmxoopirq4el4hjeedfyoxgk7jgegfo")).execute();
         Assert.assertNotNull(response.getResult());
     }
 
     @Test
     public void searchMsg() throws IOException {
-        Cid cid = Cid.of("bafy2bzaceay44dmv4pr2xocy6im4w6muwd3meavrrh7weubekkq2k25js7pva");
+        Cid cid = Cid.of("bafy2bzacea7wortjmyvs2bpte25ivr7t5qquc2wiin2c5qsxfyohlaegub36m");
 
         Response<MsgLookup> response = lotusStateAPI.searchMsg(cid).execute();
         Assert.assertNotNull(response.getResult());

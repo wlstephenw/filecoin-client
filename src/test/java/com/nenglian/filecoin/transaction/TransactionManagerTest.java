@@ -76,9 +76,12 @@ class TransactionManagerTest {
         SignedMessage signedMessage = txManager.sign(easyTransfer, null, new NodeSigner(lotusAPIFactory));
         Cid cid = txManager.send(signedMessage);
 
+
+
         System.out.println(signedMessage.getMessage().getCid());
         System.out.println(cid);
-        com.nenglian.filecoin.rpc.cid.Cid cid1 = new TransactionSerializer().getCid(signedMessage.getMessage());
+        TransactionSerializer txs = new TransactionSerializer();
+        com.nenglian.filecoin.rpc.cid.Cid cid1 = txs.getCid(txs.serialize(signedMessage));
         System.out.println(cid1.toString());
 
         int balance = txManager.lotusAPIFactory.createLotusWalletAPI().balance(to).execute().getResult().intValue();
@@ -102,8 +105,18 @@ class TransactionManagerTest {
 
 
         SignedMessage signedMessage = txManager.sign(easyTransfer, null, new NodeSigner(lotusAPIFactory));
-        MsgLookup msgLookup = txManager.sendAndWait(signedMessage);
-        Assert.assertTrue(msgLookup.getReceipt().getExitCode().equals(ExitCode.Ok));
+//        MsgLookup msgLookup = txManager.sendAndWait(signedMessage);
+        Cid cid = txManager.send(signedMessage);
+
+        System.out.println(signedMessage.getMessage().getCid());
+        System.out.println(cid);
+
+        TransactionSerializer txs = new TransactionSerializer();
+        System.out.println(txs.getCid(signedMessage.getMessage()));
+        com.nenglian.filecoin.rpc.cid.Cid cid1 = txs.getCid(txs.serialize(signedMessage));
+        System.out.println(cid1.toString());
+
+//        Assert.assertTrue(msgLookup.getReceipt().getExitCode().equals(ExitCode.Ok));
 
         int balance = txManager.lotusAPIFactory.createLotusWalletAPI().balance(to).execute().getResult().intValue();
         Assert.assertTrue(balance > 0);
